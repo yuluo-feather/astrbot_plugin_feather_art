@@ -1,0 +1,84 @@
+{
+  "conversion": {
+    "type": "object",
+    "description": "[描摹] 档位与体积",
+    "hint": "默认档位、输出体积预算与评分开关。fit_mb 会在超预算时自动逐档降低精度，保证交付体积可控。",
+    "items": {
+      "preset": {
+        "type": "string",
+        "description": "默认描摹档位",
+        "_special": "select",
+        "options": ["sketch", "freehand", "finebrush"],
+        "default": "freehand",
+        "hint": "sketch-速写（快而轻）；freehand-写意（日常均衡）；finebrush-工笔（细节优先）。"
+      },
+      "fit_mb": {
+        "type": "float",
+        "description": "输出体积目标（MiB）",
+        "default": 40,
+        "hint": "超过该体积自动降档（先降颜色、后降宽度）直到装得下；0 表示不自动降档。"
+      },
+      "max_mb": {
+        "type": "float",
+        "description": "输出体积硬上限（MiB）",
+        "default": 64,
+        "hint": "最终输出超过该值即失败，防止异常大文件。"
+      },
+      "score": {
+        "type": "bool",
+        "description": "离线计算 MAE 相似度",
+        "default": true,
+        "hint": "描摹完成后栅格化对比参考图，报告 MAE 差异（0-255，越低越贴近）。"
+      }
+    }
+  },
+  "gate": {
+    "type": "object",
+    "description": "[限流] 并发与冷却",
+    "hint": "描摹是重 CPU 任务，并发过高会把机器拖死。",
+    "items": {
+      "concurrent": {
+        "type": "int",
+        "description": "同时进行的描摹任务数",
+        "default": 1,
+        "hint": "默认 1：同一时刻只跑一个任务，其余排队。"
+      },
+      "cooldown": {
+        "type": "int",
+        "description": "同一用户相邻描摹冷却（秒）",
+        "default": 60,
+        "hint": "冷却期内同一用户再次下单会被拦下；设为 0 关闭。"
+      }
+    }
+  },
+  "input": {
+    "type": "object",
+    "description": "[输入防护] 图片尺寸与体积",
+    "hint": "防异常附件与解压炸弹。",
+    "items": {
+      "max_image_mb": {
+        "type": "float",
+        "description": "输入图片体积上限（MiB）",
+        "default": 20
+      },
+      "max_pixels": {
+        "type": "int",
+        "description": "输入图片总像素上限",
+        "default": 40000000,
+        "hint": "总像素超限直接拒绝，不解码全图（防解压炸弹）。"
+      }
+    }
+  },
+  "tool": {
+    "type": "object",
+    "description": "[自然语言] 入口开关",
+    "items": {
+      "llm_tool": {
+        "type": "bool",
+        "description": "自然语言入口（LLM 工具）",
+        "default": true,
+        "hint": "关闭后只能通过 /羽画 命令触发描摹。"
+      }
+    }
+  }
+}

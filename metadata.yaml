@@ -1,0 +1,21 @@
+# 运行环境要求：Python 3.12+（与 AstrBot 最低要求一致）；AstrBot 版本范围在下方 astrbot_version 正式声明
+name: astrbot_plugin_feather_art
+display_name: 羽画
+desc: 羽画：把图片离线描摹成纯 HTML + CSS 单文件插画，无图片、无脚本、无外链
+short_desc: 图片转纯 CSS 轮廓插画，单文件 HTML 交付
+help: |
+  [羽画 <图片>] 把图片描摹成纯 HTML+CSS 插画（默认写意档）
+  [羽画 <图片> 工笔/写意/速写] 精度档：工笔最细，写意均衡，速写最快
+  [羽画 <动图>] GIF / WebP 动图自动描成纯 CSS 动画（动画档）
+  [羽画 <图片> --fit 20] 限制输出体积（MiB），超预算自动逐档降精度
+  [自然语言] 直接说「把这张图做成纯 CSS 插画」也可触发（可在配置中关闭）
+  触发：私聊直接说即可（带 / 前缀也行）；群聊 @ 机器人后发送
+version: 0.2.0
+author: 羽落
+repo: https://github.com/yuluo-feather/astrbot_plugin_feather_art
+astrbot_version: ">=4.16,<5"
+tags:
+  - css-art
+  - 图片
+  - 插画
+  - 工具

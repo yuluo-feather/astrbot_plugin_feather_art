@@ -9,6 +9,7 @@
 
 import hashlib
 import json
+import math
 import os
 import tempfile
 import time
@@ -97,6 +98,81 @@ def _fit_ladder(base: dict) -> list[dict]:
     return ladder
 
 
+# ---- fit 跳档：字节数与档位的近似幂律模型 ----
+# 2026-09-07 探针校准（三张 1600x1600 合成图跑全阶梯实测）：
+#   bytes ≈ 常数 · width^KW · colors^KC
+#   KC 实测区间 0.13~0.50（纹理密集图 256→64 色仅降 17%，颜色轴收益弱），
+#   KW 实测区间 1.0~2.0（纹理密集≈1.4~2.0，大块纯色≈1.0）。
+# 保守取向：KC 取中值偏保守（高估颜色收益 → 判定偏乐观，代价只是颜色轴
+# 多试一次）；KW 取中值 1.4；预测段只走一半位移（_HALF_STEP 防 overshoot）。
+_COLOR_POWER = 0.35
+_WIDTH_POWER = 1.4
+_HALF_STEP = 0.5
+
+
+def _first_at_or_below(ladder: list[dict], width: int, colors: int) -> dict:
+    """阶梯表中第一个「宽度≤width 且颜色≤colors」的档；找不着则返回最粗档。"""
+    for cand in ladder:
+        if cand["max_width"] <= width and cand["colors"] <= colors:
+            return cand
+    return ladder[-1]
+
+
+def _next_attempt(history: list[dict], target: int, ladder: list[dict]) -> dict | None:
+    """fit 跳档纯函数：给定失败史（含实测字节），返回下一个应尝试的档。
+
+    轴语义沿用阶梯：先颜色轴（保宽度），颜色降到底还不够再切宽度轴。
+    - 首次失败：按幂律半程跳（预测段），_HALF_STEP 防跳过头；
+    - 宽度轴已有两个及以上同颜色实测失败点：log-log 线性插值（收敛段）；
+    - 结果一律规整到阶梯表实际档位（含 384/300/256 终极替补档），不硬编码地板；
+    - 纯计算、无随机：同一失败史必得同一档，保字节级确定性；
+      跳到最粗档仍装不下时回归该档，由调用方 index+1 推进耗尽熔断。
+    """
+    last = history[-1]
+    width = last["max_width"]
+    colors = last["colors"]
+    bytes_taken = last["bytes"]
+    if target <= 0:
+        # 预算为零：连模板都装不下，直接归位末档（外层走熔断文案）
+        return ladder[-1]
+    # 颜色轴地板 = 「宽度等于初始宽度」的档位里最小的颜色数（finebrush 为 64）；
+    # 不取整个阶梯的最小颜色（末端 256/4 属终极替补，是宽度轴之后的事）。
+    base_width = ladder[0]["max_width"]
+    color_floor = min(item["colors"] for item in ladder if item["max_width"] == base_width)
+    # 1) 颜色轴判定：估算颜色降到地板后的字节
+    if colors > color_floor:
+        b_floor = bytes_taken * (color_floor / colors) ** _COLOR_POWER
+        if b_floor <= target:
+            c_need = int(colors * (target / bytes_taken) ** (1.0 / _COLOR_POWER))
+            return _first_at_or_below(ladder, width, max(color_floor, c_need))
+        # 颜色降到底也不够：基准换成地板档的估算字节，滑入宽度轴
+        colors = color_floor
+        bytes_taken = b_floor
+    # 2) 宽度轴：优先「同颜色」两点 log-log 插值，不足则预测段半程跳。
+    #    插值点必须与当前档同颜色——base 档的 axis 标记为 width，但其颜色
+    #    与切轴后的当前档不同，混入会用到不同函数上的点（幂律参数不同），
+    #    外推失真会一步压到末档（2026-09-07 端到端实测踩到：900/64 失败后
+    #    直接跳到 256/4，跳过了本可装下的 512/64）。
+    width_points = [h for h in history if h["axis"] == "width" and h["colors"] == colors]
+    if len(width_points) >= 2:
+        a, b = width_points[-2], width_points[-1]
+        log_b2 = math.log(b["bytes"])
+        log_b1 = math.log(a["bytes"])
+        if abs(log_b2 - log_b1) < 1e-9:
+            next_width = width + _HALF_STEP * ((width * (target / bytes_taken) ** (1.0 / _WIDTH_POWER)) - width)
+        else:
+            k = (math.log(b["max_width"]) - math.log(a["max_width"])) / (log_b2 - log_b1)
+            next_width = math.exp(math.log(b["max_width"])
+                                  + k * (math.log(target) - log_b2))
+    else:
+        w_pred = width * (target / bytes_taken) ** (1.0 / _WIDTH_POWER)
+        next_width = width + _HALF_STEP * (w_pred - width)
+    # 收敛外推在非单调数据（纯色图波动）下 k 可能为负 → 预测宽度比当前还大；
+    # 钳到当前宽度，绝不回退到更细的档（外层 index+1 保证推进）。
+    next_width = min(next_width, width)
+    return _first_at_or_below(ladder, max(1, int(next_width)), colors)
+
+
 def atomic_write(text: str, path: Path, force: bool) -> None:
     """原子落盘：先写临时文件再改名；force=False 时拒绝覆盖已有文件。"""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,12 +233,16 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
     target = _fit_target(traced.fit_mb, traced.max_mb)
     ladder = _fit_ladder(base) if traced.fit_mb else [base]
     attempts: list[dict] = []
+    history: list[dict] = []
     document = stats = reference = original = None
     chosen = base
     seen = set()
-    for candidate in ladder:
+    index = 0
+    while index < len(ladder):
+        candidate = ladder[index]
         key = (candidate["max_width"], candidate["colors"])
         if key in seen:
+            index += 1
             continue
         seen.add(key)
         chosen = candidate
@@ -185,8 +265,17 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
                 raise TraceError("输出体积超预算，减小图片或换低一档精度再来。") from exceeded
             attempts.append({"max_width": candidate["max_width"], "colors": candidate["colors"],
                              "bytes": exceeded.byte_count, "exceeded": True})
+            history.append({
+                "max_width": candidate["max_width"], "colors": candidate["colors"],
+                "bytes": exceeded.byte_count,
+                "axis": ("colors" if candidate["max_width"] == ladder[0]["max_width"]
+                         and candidate["colors"] < ladder[0]["colors"] else "width"),
+            })
             traced.progress(f"Fit attempt {len(attempts)}: width {candidate['max_width']}, "
                             f"colors {candidate['colors']} exceeded; stepping down")
+            nxt = _next_attempt(history, target, ladder)
+            # 至少前进一步（防预测档与当前档相同）；已到最粗档仍超支 → 耗尽走熔断
+            index = max(ladder.index(nxt) if nxt else index, index + 1)
             continue
         audit = audit_html(document)
         if not audit["valid"]:

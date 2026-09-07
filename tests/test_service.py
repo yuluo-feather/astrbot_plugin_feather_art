@@ -64,6 +64,79 @@ def test_trace_reports_fit_attempts(tmp_path):
     assert rep["fit"]["target_mb"] == 10.0
 
 
+# ---------- fit 跳档（_next_attempt）纯函数锁定 ----------
+
+
+def _base_ladder():
+    return service._fit_ladder(
+        {"max_width": 1600, "colors": 256, "epsilon": 0.24, "passes": 4})
+
+
+def test_next_attempt_colors_axis_judge():
+    """颜色轴判定：颜色降到地板够 → 在颜色轴上跳（宽度不变）。"""
+    ladder = _base_ladder()
+    hist = [{"max_width": 1600, "colors": 128, "bytes": 7 * 2**20, "axis": "colors"}]
+    nxt = service._next_attempt(hist, 6 * 2**20, ladder)
+    assert (nxt["max_width"], nxt["colors"]) == (1600, 64)
+
+
+def test_next_attempt_switches_to_width_axis():
+    """颜色降到底也不够 → 切宽度轴，预测段半程跳。"""
+    ladder = _base_ladder()
+    hist = [{"max_width": 1600, "colors": 256, "bytes": 20 * 2**20, "axis": "width"}]
+    nxt = service._next_attempt(hist, 8 * 2**20, ladder)
+    assert (nxt["max_width"], nxt["colors"]) == (1200, 64)
+
+
+def test_next_attempt_loglog_converges():
+    """宽度轴两个同轴真实点 → log-log 插值精确命中。"""
+    ladder = _base_ladder()
+    hist = [
+        {"max_width": 1600, "colors": 64, "bytes": 12 * 2**20, "axis": "width"},
+        {"max_width": 1200, "colors": 64, "bytes": 9 * 2**20, "axis": "width"},
+    ]
+    nxt = service._next_attempt(hist, 8 * 2**20, ladder)
+    assert (nxt["max_width"], nxt["colors"]) == (900, 64)
+
+
+def test_next_attempt_clamps_to_ultimate_floor():
+    """预测低于阶梯实际地板 → 钳位到终极替补档。"""
+    ladder = _base_ladder()
+    hist = [{"max_width": 512, "colors": 4, "bytes": 5 * 2**20, "axis": "width"}]
+    nxt = service._next_attempt(hist, 1 * 2**20, ladder)
+    assert (nxt["max_width"], nxt["colors"]) == (256, 4)
+
+
+def test_next_attempt_interpolation_needs_same_color():
+    """插值只用同颜色宽度点：base（256 色）与当前（64 色）非同函数 → 走预测段。"""
+    ladder = _base_ladder()
+    hist = [
+        {"max_width": 1600, "colors": 256, "bytes": 15 * 2**20, "axis": "width"},
+        {"max_width": 900, "colors": 64, "bytes": 10 * 2**20, "axis": "width"},
+    ]
+    nxt = service._next_attempt(hist, 1 * 2**20, ladder)
+    # 同色点只有 1 个 → 预测段半程跳（不混入 256 色点外推）
+    assert (nxt["max_width"], nxt["colors"]) == (512, 64)
+
+
+def test_next_attempt_never_regresses():
+    """最粗档仍超支：返回末档本身（不 None 不回退），由外层解算熔断。"""
+    ladder = _base_ladder()
+    hist = [{"max_width": 256, "colors": 4, "bytes": 10 * 2**20, "axis": "width"}]
+    nxt = service._next_attempt(hist, 1 * 2**20, ladder)
+    assert (nxt["max_width"], nxt["colors"]) == (256, 4)
+    assert service._next_attempt(hist, 1 * 2**20, ladder) is not None
+
+
+def test_next_attempt_deterministic():
+    """同一失败史必得同一档（确定性承诺）。"""
+    ladder = _base_ladder()
+    hist = [{"max_width": 1600, "colors": 256, "bytes": 20 * 2**20, "axis": "width"}]
+    a = service._next_attempt(hist, 8 * 2**20, ladder)
+    b = service._next_attempt(hist, 8 * 2**20, ladder)
+    assert a == b
+
+
 def test_fit_ladder_colors_first():
     """降档阶梯：颜色优先，宽度兜底；且整条阶梯单调收紧。"""
     base = {"max_width": 1600, "colors": 256, "epsilon": 0.24, "passes": 4}

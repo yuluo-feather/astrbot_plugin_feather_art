@@ -114,7 +114,7 @@ def animation_length_hint(data: bytes, frames: int, text: str) -> str | None:
         f"这张动图有点长（约 {round(total_seconds)} 秒 / {frames} 帧），"
         f"CSS 动画只能保留少量关键帧，还原度会大打折扣。\n"
         f"要不直接用原 GIF 播放，或剪 10~15 秒的片段再来描；"
-        f"实在要描，回复「继续」再发一次这张图。"
+        f"实在要描，回复「继续」就行——图我留着，不用重发。"
     )
 
 

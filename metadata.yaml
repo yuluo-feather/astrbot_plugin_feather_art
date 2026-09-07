@@ -10,7 +10,7 @@ help: |
   [羽画 <图片> --fit 20] 限制输出体积（MiB），超预算自动逐档降精度
   [自然语言] 直接说「把这张图做成纯 CSS 插画」也可触发（可在配置中关闭）
   触发：私聊直接说即可（带 / 前缀也行）；群聊 @ 机器人后发送
-version: 0.2.0
+version: 0.2.1
 author: 羽落
 repo: https://github.com/yuluo-feather/astrbot_plugin_feather_art
 astrbot_version: ">=4.16,<5"

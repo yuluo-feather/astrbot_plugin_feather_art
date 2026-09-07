@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.2.0-f8a5c2" alt="v0.2.0"/>
+  <img src="https://img.shields.io/badge/version-v0.2.1-f8a5c2" alt="v0.2.1"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -152,6 +152,11 @@ tests/                # pytest suite (grows with development)
 
 ## 📜 Changelog
 
+#### v0.2.1
+
+- Performance: faster budget stepping — no more retrying every ladder step; size estimates jump straight to a fitting step, noticeably cutting the wait for heavy images
+- Fix: after confirming a long animation, the original image no longer needs to be resent — each user's latest image is kept for 30 minutes; the prompt text is updated accordingly
+
 #### v0.2.0
 
 - Added: animation tracing — GIF / WebP → pure-CSS animation (frame-to-frame layer tracking + @keyframes timeline); new motion preset
@@ -164,6 +169,7 @@ tests/                # pytest suite (grows with development)
 ## 🌙 Known limits
 
 - Photos, noise and dense textures produce large files; use `--fit` or a lighter preset
+- **Determinism depends on the environment**: byte-identical output holds only within the dependency ranges in `requirements.txt` (OpenCV pinned to `≥4.10.0.84,<4.11`); for cross-environment reproduction, install a version in that range first
 - Very long animations (>30 s or 2500+ frames) prompt first: use the original GIF or trim a 10–15 s clip, and tracing runs only after you confirm
 - Transparent PNG is composited onto the matte (default white)
 - Wide-gamut / CMYK sources: convert to sRGB first

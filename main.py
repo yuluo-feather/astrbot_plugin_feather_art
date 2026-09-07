@@ -109,10 +109,10 @@ class FeatherArtPlugin(Star):
         return None
 
     def _recent_image(self, event: AstrMessageEvent) -> Path | None:
-        """回退：取该用户 5 分钟内的最近缓存图（LLM 工具场景用）。"""
+        """回退：取该用户 30 分钟内的最近缓存图（LLM 工具场景与「继续」场景用）。"""
         uid = str(event.get_sender_id())
         record = self._last_image.get(uid)
-        if record and time.time() - record[1] < 300 and record[0].exists():
+        if record and time.time() - record[1] < 1800 and record[0].exists():
             return record[0]
         return None
 

@@ -28,11 +28,19 @@ OKLAB_FROM_LMS_PRIME = np.array([
 ], np.float32)
 
 
+# sRGB → 线性 查表：每一项用与原逐像素计算完全相同的 float32 表达式生成，
+# IEEE 确定性保证查表结果与原 `** 2.4` 逐位一致——省掉全图逐像素浮点幂，
+# 输出 SHA 不变、测试基线零重锁（2026-09-07 野路子优化）。
+_SRGB_TO_LINEAR = np.empty(256, np.float32)
+for _v in range(256):
+    _x = np.float32(_v) / 255
+    _SRGB_TO_LINEAR[_v] = np.where(
+        _x <= 0.04045, _x / 12.92, ((_x + 0.055) / 1.055) ** 2.4)
+
+
 def oklab_of(rgb: np.ndarray) -> np.ndarray:
     """把 (n, 3) 的 sRGB uint8 数组映射为 Oklab 浮点坐标（batch 版）。"""
-    linear = rgb.astype(np.float32) / 255
-    linear = np.where(linear <= 0.04045, linear / 12.92,
-                      ((linear + 0.055) / 1.055) ** 2.4)
+    linear = _SRGB_TO_LINEAR[rgb]
     lms = linear @ OKLAB_FROM_LINEAR.T
     return np.cbrt(lms, out=lms) @ OKLAB_FROM_LMS_PRIME.T
 

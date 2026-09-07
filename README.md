@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.2.0-f8a5c2" alt="v0.2.0"/>
+  <img src="https://img.shields.io/badge/version-v0.2.1-f8a5c2" alt="v0.2.1"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -152,6 +152,11 @@ tests/                # pytest 用例（随开发增长）
 
 ## 📜 更新记录
 
+#### v0.2.1
+
+- 性能：超预算降档提速——不再逐档完整重试，改为体积估算直接跳档，大图降档等待时间明显缩短
+- 修复：长动图确认后无需重发原图（每个用户的最近一张图保留 30 分钟），提示文案同步更新
+
 #### v0.2.0
 
 - 新增：动图描摹——GIF / WebP → 纯 CSS 动画（帧间图层跟踪 + @keyframes 时间线），新增动画档
@@ -164,6 +169,7 @@ tests/                # pytest 用例（随开发增长）
 ## 🌙 已知限制
 
 - 照片、噪点与纹理密集的图会生成大文件；建议用 `--fit` 或换低档
+- **确定性依赖环境**：逐字节一致仅在依赖版本区间内成立（OpenCV 锁定 `≥4.10.0.84,<4.11`，见 `requirements.txt`）；跨环境复现请先安装该区间内的版本
 - 超长动图（估算时长 > 30 秒或 2500 帧以上）会先提示建议用原 GIF 或剪 10~15 秒片段，确认后才描摹
 - 透明背景会合成到指定底色（默认白）
 - 宽色域 / CMYK 来源建议先转 sRGB

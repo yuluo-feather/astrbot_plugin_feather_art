@@ -2,6 +2,26 @@
 
 > 每个版本条目均为中文在前、英文在后。
 
+#### v0.2.1
+
+##### ⚡ 性能
+
+- **超预算降档提速**：`--fit` 模式下输出超预算时不再逐个档位完整重试（大图原来要重试 6~7 次才降到位），改为按体积估算直接跳档，降档过程的总等待时间明显缩短
+
+##### 🔧 修复
+
+- **长动图确认流程**：回复「继续」后无需重发原图（每个用户的最近一张图自动保留 30 分钟），提示文案同步更新
+
+**English**
+
+##### ⚡ Performance
+
+- **Faster budget stepping**: when the output exceeds the budget, --fit no longer retries every ladder step with a full render; it now jumps directly based on a size estimate, cutting the total wait for heavy images noticeably (previously up to 6–7 failed renders)
+
+##### 🔧 Fixes
+
+- **Long-animation confirmation**: after replying "继续" (continue), the original image does not need to be resent — each user's latest image is kept for 30 minutes; the prompt text is updated accordingly
+
 #### v0.2.0
 
 ##### ✨ 新功能

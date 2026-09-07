@@ -10,10 +10,10 @@ CSS 多边形和渐变；img、SVG、Canvas、JavaScript、base64、外链一概
 算法思路对过 AvroraCL 的 image-to-css-art（MIT），重写实现、没抄代码；
 来历和致谢见 README.md。
 
-命名这本账：
-- 描摹就叫 trace（羽画的「画」）；动画里跨帧串线的图层轨迹叫 track；
-- 草稿、半成品叫 draft；打底的薄纱叫 veil；微弱的位移漂移叫 drift；
-- 新代码选名字往这几样上靠，老名字是四方锁定的契约，谁也不许动。
+命名这本账（只记真实存在的名字）：
+- 描摹叫 trace；动画里跨帧串线的图层轨迹叫 track；
+- 打底的底板剪影叫 underpainting；颜色漂移的幅度叫 drift；
+- 新代码选名字往这几样上靠；改现役名字先过 grep，别让注释和代码分家。
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"

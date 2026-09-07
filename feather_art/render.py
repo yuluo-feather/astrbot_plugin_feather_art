@@ -7,7 +7,10 @@
 - 小碎块按 160px 网格分组、整组用该色渲染，省 div 也省心眼；
 - 底板（underpainting）是一张 48 色剪影，专治缩小观看时的浅色接缝。
 
-预算纪律：边累加边记账，超了立刻抛 BudgetExceeded——白算一整轮太亏。
+预算纪律：拼接过程只记账不抛——超预算不打断提取与拼接，由末尾终检抛出
+BudgetExceeded（携带真实完整字节数），让上层的 fit 跳档拿到精确体积信号，
+而不是「target+ε」的失真计数（2026-09-07 端到端实测：中途抛会让所有失败
+档的 byte_count 趋同、跳档预测失去依据）。
 """
 
 import html
@@ -16,7 +19,14 @@ import math
 import cv2
 import numpy as np
 
-from .geometry import bridge_rings, component_rings, hex_color, mask_polygon, number, polygon_css
+from .geometry import (
+    bridge_rings,
+    component_rings,
+    hex_color,
+    mask_polygon,
+    number,
+    polygon_css,
+)
 from .merge import label_components
 from .paint import paint_for_region
 from .quantize import quantize
@@ -68,9 +78,9 @@ class ContourRenderer:
                       "interior_holes": 0, "underpainting_shapes": 0}
 
     def account(self, text: str) -> str:
+        # 只做累计统计：不在这里抛 BudgetExceeded（见模块 docstring「预算纪律」），
+        # 超预算由 render_document 末尾终检统一抛出，携带真实完整字节数。
         self.byte_count += len(text.encode("utf-8"))
-        if self.byte_count > self.max_bytes:
-            raise BudgetExceeded(self.byte_count)
         return text
 
     def solid_class(self, paint: str) -> str:
@@ -200,7 +210,7 @@ def render_document(reference, labels, palette, original_size, *, background, ti
     # 不生效（容器高度塌陷），padding-top 百分比却是老内核都认的。
     sizer = number(height / width * 100.0, 5)
     paints = "".join(f".{name}{{background:{paint}}}" for paint, name in renderer.paint_classes.items())
-    document = f'''<!DOCTYPE html>
+    document = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -231,7 +241,7 @@ html,body{{margin:0;min-height:100%;background:{matte};color-scheme:light}}
 </main>
 </body>
 </html>
-'''
+"""
     if len(document.encode("utf-8")) > max_bytes:
         raise BudgetExceeded(len(document.encode("utf-8")))
     if renderer.raster is not None:

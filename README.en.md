@@ -1,5 +1,5 @@
 <p align="center">
-  <font size="6"><b>羽画 Feather Art 🪶</b></font>
+  <img src="https://raw.githubusercontent.com/yuluo-feather/astrbot_plugin_feather_art/main/logo_small.png" width="110" height="110" align="middle"/> <font size="6"><b>羽画 Feather Art 🪶</b></font>
 </p>
 
 <p align="center">

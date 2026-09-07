@@ -124,7 +124,8 @@ def extract_shapes(labels: np.ndarray, palette: np.ndarray, ref: np.ndarray,
     shapes: list[ShapeKey] = []
     for label in np.unique(labels):
         # 包围盒裁剪：只在该 label 的包围盒内做连通域（分量必在盒内），
-        # 省掉全图扫描；坐标回移后结果与全图扫描一致。
+        # 省掉全图扫描；坐标回移后结果与全图扫描一致。注意：裁剪后组件
+        # 编号会重排，取特征要用 stats/centroids 的值，别按编号对应。
         ys, xs = np.nonzero(labels == label)
         if ys.size == 0:
             continue

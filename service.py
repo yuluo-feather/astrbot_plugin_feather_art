@@ -99,9 +99,10 @@ def _fit_ladder(base: dict) -> list[dict]:
 
 
 # ---- fit 跳档：字节数与档位的近似幂律模型 ----
-# bytes ≈ 常数 · width^KW · colors^KC。指数按实测取中值偏保守：
-# 颜色轴收益弱（KC=0.35），宽度轴主导（KW=1.4）；预测段只走一半
-# 位移（_HALF_STEP），宁可多试一次也不 overshoot。
+# bytes ≈ 常数 · width^KW · colors^KC，指数按实测校准、取中值偏保守：
+# 颜色轴收益弱（KC=0.35，纹理密集图 256→64 色体积仅降 17%）；
+# 宽度轴主导（KW=1.4）；预测段只走一半位移（_HALF_STEP）——
+# 宁可多试一次，也别一步跳过头。
 _COLOR_POWER = 0.35
 _WIDTH_POWER = 1.4
 _HALF_STEP = 0.5
@@ -147,7 +148,7 @@ def _next_attempt(history: list[dict], target: int, ladder: list[dict]) -> dict 
         bytes_taken = b_floor
     # 2) 宽度轴：优先「同颜色」两点 log-log 插值，不足则预测段半程跳。
     #    插值点必须与当前档同颜色：不同颜色的档位不落在同一幂律上，
-    #    混入会外推失真、一步压到末档。
+    #    混入会外推失真——曾一步跳到最末档，跳过本可装下的中间档。
     width_points = [h for h in history if h["axis"] == "width" and h["colors"] == colors]
     if len(width_points) >= 2:
         a, b = width_points[-2], width_points[-1]

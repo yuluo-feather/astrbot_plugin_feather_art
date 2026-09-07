@@ -99,12 +99,9 @@ def _fit_ladder(base: dict) -> list[dict]:
 
 
 # ---- fit 跳档：字节数与档位的近似幂律模型 ----
-# 2026-09-07 探针校准（三张 1600x1600 合成图跑全阶梯实测）：
-#   bytes ≈ 常数 · width^KW · colors^KC
-#   KC 实测区间 0.13~0.50（纹理密集图 256→64 色仅降 17%，颜色轴收益弱），
-#   KW 实测区间 1.0~2.0（纹理密集≈1.4~2.0，大块纯色≈1.0）。
-# 保守取向：KC 取中值偏保守（高估颜色收益 → 判定偏乐观，代价只是颜色轴
-# 多试一次）；KW 取中值 1.4；预测段只走一半位移（_HALF_STEP 防 overshoot）。
+# bytes ≈ 常数 · width^KW · colors^KC。指数按实测取中值偏保守：
+# 颜色轴收益弱（KC=0.35），宽度轴主导（KW=1.4）；预测段只走一半
+# 位移（_HALF_STEP），宁可多试一次也不 overshoot。
 _COLOR_POWER = 0.35
 _WIDTH_POWER = 1.4
 _HALF_STEP = 0.5
@@ -149,10 +146,8 @@ def _next_attempt(history: list[dict], target: int, ladder: list[dict]) -> dict 
         colors = color_floor
         bytes_taken = b_floor
     # 2) 宽度轴：优先「同颜色」两点 log-log 插值，不足则预测段半程跳。
-    #    插值点必须与当前档同颜色——base 档的 axis 标记为 width，但其颜色
-    #    与切轴后的当前档不同，混入会用到不同函数上的点（幂律参数不同），
-    #    外推失真会一步压到末档（2026-09-07 端到端实测踩到：900/64 失败后
-    #    直接跳到 256/4，跳过了本可装下的 512/64）。
+    #    插值点必须与当前档同颜色：不同颜色的档位不落在同一幂律上，
+    #    混入会外推失真、一步压到末档。
     width_points = [h for h in history if h["axis"] == "width" and h["colors"] == colors]
     if len(width_points) >= 2:
         a, b = width_points[-2], width_points[-1]

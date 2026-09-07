@@ -28,9 +28,8 @@ OKLAB_FROM_LMS_PRIME = np.array([
 ], np.float32)
 
 
-# sRGB → 线性 查表：每一项用与原逐像素计算完全相同的 float32 表达式生成，
-# IEEE 确定性保证查表结果与原 `** 2.4` 逐位一致——省掉全图逐像素浮点幂，
-# 输出 SHA 不变、测试基线零重锁（2026-09-07 野路子优化）。
+# sRGB → 线性 查表：256 项 float32 预计算，代替全图逐像素浮点幂
+# （每一项按同一表达式生成，结果与原逐点计算逐位一致）。
 _SRGB_TO_LINEAR = np.empty(256, np.float32)
 for _v in range(256):
     _x = np.float32(_v) / 255

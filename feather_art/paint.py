@@ -38,12 +38,9 @@ def paint_for_region(reference, mask, x, y, width, height, gradients: bool):
 
     # 设计矩阵 [dx, dy, 1]：拟合平面 color ≈ a*dx + b*dy + c
     design = np.column_stack((xs + .5 - width / 2, ys + .5 - height / 2, np.ones(len(xs))))
-    # 野路子：3×3 正态方程 + 2×2 解析主特征方向，替代 `lstsq`（SVD 求解超定系统）
-    # 与 `svd(coeff[:2])`（2×3 矩阵的主左奇异向量）。coeff[:2] 是 (a_j, b_j) 两行、
-    # 每行 3 个颜色通道——梯度主方向即 2×2 矩阵 AAᵀ 的最大特征向量，有解析解：
-    # 特征向量 (q, λ-p)（λ 为最大特征值），q=0 时退化为坐标轴。
-    # 符号约定自定（不随 LAPACK 变，跨环境更稳）；与 SVD 可能相差 180°+端点色
-    # 互换——CSS linear-gradient 角度+180° 且端点色互换是同一渐变，视觉等价。
+    # 平面拟合：3×3 正态方程（原为 SVD 求解 lstsq）；梯度主方向 = 2×2 矩阵
+    # AAᵀ 的最大特征向量（解析解，方向符号自定）。方向与 SVD 可能差 180°，
+    # 同时端点色互换——CSS 渐变角度+180° 且端点互换是同一渐变，视觉等价。
     atb = design.T @ samples
     try:
         coeff = np.linalg.solve(design.T @ design, atb)

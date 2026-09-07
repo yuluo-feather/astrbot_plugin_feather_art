@@ -150,8 +150,8 @@ def test_horizontal_gradient_angle():
         ref[:, xx, :] = xx * 6
     mask = np.ones((40, 40), bool)
     paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 40, 40, True)
-    # 左暗右亮 → 90deg（终点在右）；解析特征向量符号自定，与旧 SVD 的 270deg
-    # （终点在左、首尾色互换）是同一渐变，视觉等价（2026-09-07 野路子优化）。
+    # 左暗右亮 → 90deg（终点在右）；解析特征向量符号自定，与旧 SVD 的
+    # 270deg（终点在左、端点色互换）是同一渐变，视觉等价。
     assert is_grad and paint_str.startswith("linear-gradient(90deg,")
 
 

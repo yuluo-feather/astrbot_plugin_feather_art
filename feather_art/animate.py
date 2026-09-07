@@ -123,9 +123,8 @@ def extract_shapes(labels: np.ndarray, palette: np.ndarray, ref: np.ndarray,
     """
     shapes: list[ShapeKey] = []
     for label in np.unique(labels):
-        # 包围盒裁剪：只在该 label 的包围盒内做连通域（各分量必在盒内，连通性不变），
-        # 全图 O(HW) 扫描变成 O(box)，label 多时快 2~4 倍；坐标回移后输出
-        # 与全图扫描逐位一致（2026-09-07 野路子优化，probe 锁定等价）。
+        # 包围盒裁剪：只在该 label 的包围盒内做连通域（分量必在盒内），
+        # 省掉全图扫描；坐标回移后结果与全图扫描一致。
         ys, xs = np.nonzero(labels == label)
         if ys.size == 0:
             continue

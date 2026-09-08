@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.2.1-f8a5c2" alt="v0.2.1"/>
+  <img src="https://img.shields.io/badge/version-v0.2.2-f8a5c2" alt="v0.2.2"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -62,6 +62,7 @@
 | 描摹图片 | `/羽画 [档位]` + 发图 | 档位与图片顺序随意，`图片` 二字可省略；档位：速写 / 写意 / 工笔（默认写意） |
 | 控制体积 | `/羽画 --fit N` | 目标体积（MiB），含 2% 容差；超预算自动降档（先颜色、后宽度）直到装得下 |
 | 描摹动图 | 发 GIF / WebP 动图 | 自动走动画档，描成可循环播放的纯 CSS 动画；超长动图（>30 秒或 2500 帧）先提示后描摹 |
+| 动画采样密度 | `/羽画 --sample N` + 发动图 | 固定采样 N 帧（8~96，越界钳制）；不传按按时长自适应（上限 48 帧） |
 | 自然语言 | 发图后说「把这张图做成纯 CSS 插画」 | 即可触发（可在配置中关闭） |
 
 示例：
@@ -83,6 +84,7 @@
 | `fit_mb` | `40` | 输出体积目标（MiB），含 2% 容差；`0` = 不自动降档 |
 | `max_mb` | `64` | 输出体积硬上限（MiB） |
 | `score` | `true` | 是否离线计算 MAE 相似度 |
+| `motion_sample` | `0` | 动画采样帧数默认覆盖：`0` = 按时长自适应（上限 48 帧）；8~96 = 固定采样 |
 | `concurrent` | `1` | 同时进行的描摹任务数 |
 | `cooldown` | `60` | 同一用户相邻描摹冷却秒数 |
 | `llm_tool` | `true` | 自然语言入口开关 |
@@ -151,6 +153,10 @@ tests/                # pytest 用例（随开发增长）
 ```
 
 ## 📜 更新记录
+
+#### v0.2.2
+
+- 新增：动画采样密度可调——`--sample N`（8~96 帧）固定动画采样帧数，更流畅或更省体积由你定；配置项 `motion_sample` 可设默认值
 
 #### v0.2.1
 

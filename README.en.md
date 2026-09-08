@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.2.1-f8a5c2" alt="v0.2.1"/>
+  <img src="https://img.shields.io/badge/version-v0.2.2-f8a5c2" alt="v0.2.2"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -62,6 +62,7 @@ An AstrBot plugin that **traces an image offline** into a single-file HTML + CSS
 | Trace an image | `/羽画 [preset]` + send image | preset and image order doesn't matter; the literal word `图片` is optional; presets: sketch / freehand / finebrush (default freehand) |
 | Cap the size | `/羽画 --fit N` | target volume (MiB) with 2% tolerance; overshoot steps down colors first, then width |
 | Trace an animation | send a GIF / WebP | automatically uses the motion preset → looping pure-CSS animation; very long ones (>30 s or 2500+ frames) prompt first |
+| Animation sampling | `/羽画 --sample N` + a GIF/WebP | fixes the sampled frame count (8–96, clamped); without it, adaptive sampling applies (48-frame cap) |
 | Natural language | say "make this a pure CSS illustration" after sending an image | triggers automatically (disable via config) |
 
 Examples:
@@ -83,6 +84,7 @@ Configurable from the AstrBot plugin panel:
 | `fit_mb` | `40` | output volume target (MiB), 2% tolerance; `0` = no auto stepping |
 | `max_mb` | `64` | hard output size cap (MiB) |
 | `score` | `true` | compute the offline MAE similarity score |
+| `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |
@@ -151,6 +153,10 @@ tests/                # pytest suite (grows with development)
 ```
 
 ## 📜 Changelog
+
+#### v0.2.2
+
+- New: adjustable animation sampling density — `--sample N` (8–96 frames) fixes how many frames are sampled, for smoothness or smaller output; the config key `motion_sample` can set a default
 
 #### v0.2.1
 

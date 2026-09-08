@@ -8,7 +8,11 @@
         "type": "string",
         "description": "默认描摹档位",
         "_special": "select",
-        "options": ["sketch", "freehand", "finebrush"],
+        "options": [
+          "sketch",
+          "freehand",
+          "finebrush"
+        ],
         "default": "freehand",
         "hint": "sketch-速写（快而轻）；freehand-写意（日常均衡）；finebrush-工笔（细节优先）。"
       },
@@ -29,6 +33,23 @@
         "description": "离线计算 MAE 相似度",
         "default": true,
         "hint": "描摹完成后栅格化对比参考图，报告 MAE 差异（0-255，越低越贴近）。"
+      },
+      "motion_sample": {
+        "type": "int",
+        "description": "动画采样帧数覆盖（0=按时长自适应）",
+        "default": 0,
+        "hint": "8~96：越大越流畅、文件越大；0 表示保持按时长自适应（上限 48 帧）。指令 --sample N 可临时覆盖。"
+      },
+      "animation_style": {
+        "type": "string",
+        "description": "动画渲染风格",
+        "_special": "select",
+        "options": [
+          "scanline",
+          "vector"
+        ],
+        "default": "scanline",
+        "hint": "scanline-扫描线（逐像素还原、无碎块、任意缩放无缝，推荐）；vector-实例矢量轨迹（旧管线，支持补间）。"
       }
     }
   },

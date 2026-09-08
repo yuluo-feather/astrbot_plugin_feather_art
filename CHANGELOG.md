@@ -2,6 +2,18 @@
 
 > 每个版本条目均为中文在前、英文在后。
 
+#### v0.2.2
+
+##### ✨ 新功能
+
+- **动画采样密度可调**：`--sample N`（8~96 帧，越界钳制）固定动画采样帧数——想要更流畅就拉高（如 10 秒动图采 96 帧 ≈ 9.6 帧/秒），想省体积就压低；不传则保持按时长自适应（上限 48 帧），也可用配置项 `motion_sample` 设默认值
+
+**English**
+
+##### ✨ New features
+
+- **Adjustable animation sampling density**: `--sample N` (8–96 frames, clamped) fixes how many frames an animation is sampled with — raise it for smoothness (e.g. a 10 s animation sampled at 96 frames ≈ 9.6 fps), lower it for size; without it, duration-adaptive sampling stays (48-frame cap), and the config key `motion_sample` can set a default
+
 #### v0.2.1
 
 ##### ⚡ 性能

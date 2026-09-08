@@ -28,7 +28,7 @@ try:
     from .hardening import (animation_length_hint, check_file_size,
                           inspect_animation, user_fault)
     from .limiter import ConversionLimiter
-    from .options import parse_options
+    from .options import SAMPLE_MAX, SAMPLE_MIN, parse_options
     from .feather_art.presets import resolve
     from .feather_art import __version__
     from .service import TraceConfig, TraceError, trace_image
@@ -148,7 +148,7 @@ class FeatherArtPlugin(Star):
             yield event.chain_result([Plain(note)])
             return
 
-        preset_key, fit_mb = parse_options(
+        preset_key, fit_mb, sample = parse_options(
             text, str(self.settings.get("preset", "freehand")),
             float(self.settings.get("fit_mb", 40.0)))
 
@@ -194,9 +194,17 @@ class FeatherArtPlugin(Star):
                     fit_mb=0.0,
                     score=False,
                 )
+                # 采样帧数：--sample 指令 > 配置默认 > 0=按时长自适应
+                sample_frames = sample
+                if sample_frames <= 0:
+                    sample_frames = int(self.settings.get("motion_sample", 0) or 0)
+                    if sample_frames > 0:
+                        sample_frames = min(SAMPLE_MAX, max(SAMPLE_MIN, sample_frames))
                 report = await asyncio.to_thread(
                     trace_animation, data, "motion", out,
-                    config=traced, force=True, report_path=report_path)
+                    config=traced, force=True, report_path=report_path,
+                    sample_frames=sample_frames,
+                    style=str(self.settings.get("animation_style", "scanline")))
             else:
                 preset_name = resolve(preset_key).name
                 await event.send(MessageChain([Plain(f"收到 {fmt} {w}×{h}，开始描摹（{preset_name}档）……")]))

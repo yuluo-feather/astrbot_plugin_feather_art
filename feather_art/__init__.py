@@ -16,4 +16,4 @@ CSS 多边形和渐变；img、SVG、Canvas、JavaScript、base64、外链一概
 - 新代码选名字往这几样上靠；改现役名字先过 grep，别让注释和代码分家。
 """
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"

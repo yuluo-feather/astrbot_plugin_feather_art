@@ -23,6 +23,7 @@
 - 🎨 [Features](#features)
 - 🎚️ [Presets](#presets)
 - 🖊️ [Usage](#usage)
+- 🔄 [Workflow](#workflow)
 - ⚙️ [Configuration](#configuration)
 - ⚗️ [How it works](#how-it-works)
 - 📦 [Installation](#installation)
@@ -74,6 +75,59 @@ Examples:
 
 > 💡 **Triggering**: works directly in private chat (with or without the `/` prefix); in group chats, @ the bot first.
 
+## 🔄 Workflow
+
+From the moment you send an image to the moment you receive the result, the plugin runs through this pipeline — understand it and troubleshooting gets much easier.
+> Module names in brackets show where each step lives (see [Development](#development)): how the flow goes is here; what each module does is there.
+
+```
+User request (either entry)【main.py entry orchestration】
+   ├─ Command entry: "/羽画 [preset] [--fit N] [--sample N]" + send an image
+   │     (works directly in private chat; in group chats, @ the bot; preset order is free)
+   └─ Natural-language entry: send an image and say "把这张图做成纯 CSS 插画" (llm_tool, optional)
+   │
+   ▼
+① Grab & cache the image【main.py】
+   ├─ Take the first image from the message (downloaded locally by the framework)
+   └─ The user's most recent image is kept for 30 minutes — LLM-tool flows and the "继续" (continue) confirmation never need the original resent
+   │
+   ▼
+② Parse options【options.py】
+   └─ preset / --fit / --sample are recognized in any order ("/羽画 图片 工笔" is the same as "/羽画 工笔 图片")
+   │
+   ▼
+③ Rate-limit gate【limiter.py】
+   ├─ Global concurrency (concurrent, default 1): one job at a time, others queue
+   └─ Per-user cooldown (cooldown, default 60s): blocked requests are told how long to wait
+   │
+   ▼
+④ Input hardening【hardening.py】
+   ├─ Size cap (max_image_mb, default 20 MiB)
+   ├─ Decompression-bomb guard (max_pixels, default 40M)
+   ├─ Animations: frame count read + duration estimate; over-long ones (>30 s or 2500 frames) are prompted before tracing, "继续" admits
+   └─ Failed checks get human-friendly words; internal exceptions go to logs only
+   │
+   ▼
+⑤ Tracing orchestration
+   ├─ Static image【service.py trace_image】
+   │     ├─ EXIF rotation → quantization → fragment merge → contour simplify → gradient fit → render → audit → atomic write
+   │     └─ --fit N: over-budget jumps ladder steps directly from a size estimate (colors first, width last), no per-step full retries
+   └─ Animation【service_animation.py trace_animation】
+         ├─ Sampling: --sample N (clamped 8–96) > motion_sample config > adaptive to duration (48-frame cap)
+         ├─ Frame-to-frame layer tracking (deterministic greedy: IoU + color + centroid) → @keyframes timeline
+         └─ Rendering style (animation_style): scanline (default; per-pixel, seamless) | vector (legacy pipeline, supports tween)
+   │
+   ▼
+⑥ Contract audit & scoring【feather_art/audit.py · score.py】
+   ├─ Audit red lines: no <script> / <img> / SVG / Canvas / base64 / external links
+   └─ Optional offline MAE similarity score (score, on by default)
+   │
+   ▼
+⑦ Delivery【deliver.py】
+   ├─ Summary text (human words, no raw paths) + a single-file HTML
+   └─ Failure layering: explainable errors get human words; internal exceptions go to logger with a fixed fallback line
+```
+
 ## ⚙️ Configuration
 
 Configurable from the AstrBot plugin panel:
@@ -85,6 +139,7 @@ Configurable from the AstrBot plugin panel:
 | `max_mb` | `64` | hard output size cap (MiB) |
 | `score` | `true` | compute the offline MAE similarity score |
 | `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
+| `animation_style` | `scanline` | animation rendering style: scanline (default; per-pixel, seamless at any zoom) | vector (legacy pipeline, supports tween) |
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |

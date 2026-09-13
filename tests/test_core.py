@@ -291,10 +291,10 @@ def test_mask_rings_hole_orientation():
 
 
 def test_version_sources_agree():
-    """版本号两处必须一致：metadata.yaml（市场读的）与 feather_art.__version__（运行时报的）。
+    """版本号四处必须一致：metadata.yaml、包内 __version__、两份 README 的版本勋章。
 
-    发版最容易漏的一步就是只改一处——用户装到的版本号与实际不符，出了问题都说不清
-    跑的是哪一版。
+    发版最容易漏的就是只改一处——metadata 动了、README 勋章忘改，用户一眼看到旧版号。
+    勋章写成 shields 的 `badge/version-vX.Y.Z` 形式，两种语言各一处。
     """
     import pathlib
     import re
@@ -306,3 +306,8 @@ def test_version_sources_agree():
     declared = re.search(r"^version:\s*(\S+)", meta, re.M).group(1)
     assert declared == __version__, (
         "metadata.yaml 声明 " + declared + "，包内 __version__ 是 " + __version__)
+    for name in ("README.md", "README.en.md"):
+        badge = re.search(r"badge/version-v([\d.]+)-", (root / name).read_text(encoding="utf-8"))
+        assert badge, name + " 里找不到版本勋章"
+        assert badge.group(1) == __version__, (
+            name + " 的版本勋章是 v" + badge.group(1) + "，应为 v" + __version__)

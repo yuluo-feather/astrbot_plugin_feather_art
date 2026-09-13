@@ -10,7 +10,7 @@
 - llm_tool: 自然语言入口开关
 - max_image_mb: 输入图片体积宽容（防御异常大文件）
 - max_pixels: 输入图片总像素上限（像素炸弹防线）
-- render_backend: 静态描摹的渲染后端（css=产品身份 / svg=实验方言）
+- render_backend: 静态描摹的渲染后端（css=产品身份 / svg=可选方言）
 """
 
 # 分组 schema（_conf_schema.json）中的键 → 所在分组

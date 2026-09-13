@@ -45,8 +45,8 @@ class TraceConfig:
     score: bool = True
     gradients: bool = True
     underpainting: bool = True
-    # 渲染后端：css 是产品身份（默认），svg 是实验分支里那门并列方言。
-    # 现在只有代码层能设（用户配置面等 P4 自动选择时再开），名字不认识就当场报。
+    # 渲染后端：css 是产品身份（默认），svg 是那门并列的可选方言。名字不认识就当场报。
+    # 用户配置面已开（WebUI 的 render_backend），这里的默认值只兜底、不挡配置。
     render_backend: str = "css"
     progress: Callable[[str], None] = field(default=lambda _: None, repr=False)
 

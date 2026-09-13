@@ -111,7 +111,7 @@
 ⑤ 描摹编排
    ├─ 静态图【service.py trace_image】
    │     ├─ EXIF 转正 → 量化 → 碎块合并 → 轮廓简化 → 渐变拟合 → 渲染 → 审计 → 原子落盘
-   │     ├─ 渲染后端（render_backend）：css 纯 CSS 插画（默认，产品身份）｜ svg 内联 SVG（实验方言）
+   │     ├─ 渲染后端（render_backend）：css 纯 CSS 插画（默认，产品身份）｜ svg 内联 SVG（可选方言）
    │     └─ --fit N：超预算按体积估算直接跳档（颜色优先、宽度兜底），不逐档重试；预算判的是**产出实测字节**，所以同一目标的 svg 档常少降一档
    └─ 动图【service_animation.py trace_animation】
          ├─ 采样：--sample N（8~96 钳制）＞ motion_sample 配置 ＞ 按时长自适应（上限 48 帧）
@@ -141,7 +141,7 @@
 | `score` | `true` | 是否离线计算 MAE 相似度 |
 | `motion_sample` | `0` | 动画采样帧数默认覆盖：`0` = 按时长自适应（上限 48 帧）；8~96 = 固定采样 |
 | `animation_style` | `scanline` | 动画渲染风格：scanline 扫描线（逐像素还原、无碎块、任意缩放不裂，推荐）/ vector 旧管线（支持补间 tween） |
-| `render_backend` | `css` | 静态描摹的渲染后端：css 纯 CSS 插画（默认，产品身份）/ svg 内联 SVG（实验方言：体积约省一半、三个内核准逐位一致；动图不受影响） |
+| `render_backend` | `css` | 静态描摹的渲染后端：css 纯 CSS 插画（默认，产品身份）/ svg 内联 SVG（可选方言：体积约省一半、三个内核准逐位一致；动图不受影响） |
 | `concurrent` | `1` | 同时进行的描摹任务数 |
 | `cooldown` | `60` | 同一用户相邻描摹冷却秒数 |
 | `llm_tool` | `true` | 自然语言入口开关 |

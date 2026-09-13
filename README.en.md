@@ -34,7 +34,7 @@
 
 ---
 
-An AstrBot plugin that **traces an image offline** into a single-file HTML + CSS illustration — no `<img>`, no SVG, no Canvas, no JavaScript, no base64, no external assets. Opening it needs nothing but a browser. Animated GIF / WebP inputs become **pure-CSS looping animations**: frame-to-frame layer tracking plus a @keyframes timeline, played directly by the browser.
+An AstrBot plugin that **traces an image offline** into a single-file illustration — by default **pure HTML + CSS**: no `<img>`, no SVG, no Canvas, no JavaScript, no base64, no external assets. (An optional inline-SVG dialect is available too — still a single file, still zero scripts and zero external links; see the `render_backend` config key.) Opening it needs nothing but a browser. Animated GIF / WebP inputs become **pure-CSS looping animations**: frame-to-frame layer tracking plus a @keyframes timeline, played directly by the browser.
 
 ## 🎨 Features
 
@@ -111,8 +111,8 @@ User request (either entry)【main.py entry orchestration】
 ⑤ Tracing orchestration
    ├─ Static image【service.py trace_image】
    │     ├─ EXIF rotation → quantization → fragment merge → contour simplify → gradient fit → render → audit → atomic write
-   │     ├─ Render backend (render_backend): css = pure CSS artwork (default, the product identity) | svg = inline SVG (experimental dialect)
-   │     └─ --fit N: over-budget jumps ladder steps directly from a size estimate (colors first, width last), no per-step full retries
+   │     ├─ Render backend (render_backend): css = pure CSS artwork (default, the product identity) | svg = inline SVG (optional dialect)
+   │     └─ --fit N: over-budget jumps ladder steps directly from a size estimate (colors first, width last), no per-step full retries; the budget is judged on the **actual bytes produced**, so the same target usually steps down one rung less on the svg dialect
    └─ Animation【service_animation.py trace_animation】
          ├─ Sampling: --sample N (clamped 8–96) > motion_sample config > adaptive to duration (48-frame cap)
          ├─ Frame-to-frame layer tracking (deterministic greedy: IoU + color + centroid) → @keyframes timeline
@@ -120,7 +120,7 @@ User request (either entry)【main.py entry orchestration】
    │
    ▼
 ⑥ Contract audit & scoring【feather_art/audit.py · score.py】
-   ├─ Audit red lines: no <script> / <img> / SVG / Canvas / base64 / external links
+   ├─ Audit red lines (per dialect): neither dialect allows <script> / <img> / Canvas / base64 / external links; the css dialect also forbids SVG, while the svg dialect allows only svg / g / defs / clipPath / path / linearGradient / stop plus same-document anchor references
    └─ Optional offline MAE similarity score (score, on by default)
    │
    ▼
@@ -141,7 +141,7 @@ Configurable from the AstrBot plugin panel:
 | `score` | `true` | compute the offline MAE similarity score |
 | `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
 | `animation_style` | `scanline` | animation rendering style: scanline (default; per-pixel, seamless at any zoom) | vector (legacy pipeline, supports tween) |
-| `render_backend` | `css` | static trace backend: css = pure CSS artwork (default, the product identity) | svg = inline SVG (experimental dialect: about half the bytes, bit-identical across engines; animations unaffected) |
+| `render_backend` | `css` | static trace backend: css = pure CSS artwork (default, the product identity) | svg = inline SVG (optional dialect: about half the bytes, bit-identical across engines; animations unaffected) |
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |

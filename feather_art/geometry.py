@@ -17,8 +17,14 @@ HALF_PIXEL = 0.125
 
 
 def number(value: float, digits: int = 3) -> str:
-    """CSS 数字压缩：去尾零，去前导零（.5 而非 0.5），0 兜底。"""
-    text = f"{value:.{digits}f}".rstrip("0").rstrip(".")
+    """CSS 数字压缩：去尾零，去前导零（.5 而非 0.5），0 兜底。
+
+    去尾零只在有小数点时做：f"{250:.0f}" 是 "250"，无脑 rstrip("0") 会把它
+    啃成 "25"——整数位（digits=0）就是这么被啃坏的，而这条路径没有小数点保护。
+    """
+    text = f"{value:.{digits}f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
     if text.startswith("0."):
         text = text[1:]
     elif text.startswith("-0."):

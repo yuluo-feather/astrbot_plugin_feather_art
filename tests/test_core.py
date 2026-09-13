@@ -95,6 +95,11 @@ def test_number_compression():
     assert geometry.number(12.0) == "12"
     assert geometry.number(0.0) == "0"
     assert geometry.number(0.333, 3) == ".333"
+    # digits=0 是整数位（无小数点）：250 不能被去尾零啃成 25
+    assert geometry.number(250.0, 0) == "250"
+    assert geometry.number(250.4, 0) == "250"
+    assert geometry.number(-100.6, 0) == "-101"
+    assert geometry.number(0.2, 0) == "0"
 
 
 def test_hex_color_rounding():

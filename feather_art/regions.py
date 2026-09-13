@@ -10,8 +10,9 @@
 
 两个盒子别混：环住在自己的网格里（前景 = 画布像素，底板 = 降采样网格），
 Region.box 是「归一化基准盒」——百分比与绝对坐标都由它推，两边不必互换。
-底板层的基准盒还兼着「拉伸」的语义：同一串百分比铺到整幅画布上，等于把
-粗网格拉开，所以底板用不着额外的缩放系数。
+Region.target 是「落位盒」——环铺到画布上的那块地方：前景与 box 相同，
+底板是整幅画布，于是同一串粗网格坐标被拉开铺满。归一化与落位是两件事，
+底板正是它们不同的那一种，所以两个字段都留明面，别让后端自己猜。
 
 相似度栅格化在这一层顺手做掉：它镜像的是「谁盖住谁」，与写成哪家语法无关；
 塞进中间表示反而会把评分细节漏进本该干净的几何层。
@@ -49,6 +50,7 @@ class Region:
     rings: list
     paint: object
     box: tuple
+    target: tuple              # 落位盒：前景即 box，底板是整幅画布
 
 
 @dataclass(frozen=True, eq=False)
@@ -134,7 +136,8 @@ class _Producer:
             rings = mask_rings(mask, .26, 1)
             if not rings:
                 continue
-            regions.append(Region(rings, Solid(rgb), box))
+            regions.append(Region(rings, Solid(rgb), box,
+                                  (np.zeros(2), np.array([self.width, self.height], float))))
             if self.raster is not None:
                 # 底板按「膨胀后的整幅掩码」参与评分，而不是按简化后的多边形——
                 # 这是既有口径，改了 MAE 就跟着变
@@ -196,7 +199,7 @@ class _Producer:
             return None
         if self.raster is not None:
             self.raster.fill_rings(rings, origin, size, paint)
-        return Region(rings, paint, (origin, size))
+        return Region(rings, paint, (origin, size), (origin, size))
 
 
 def build_illustration(reference, labels, palette, *, background, epsilon, gradients,

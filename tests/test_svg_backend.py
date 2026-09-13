@@ -15,6 +15,7 @@ import re
 
 import numpy as np
 import pytest
+import util
 
 from data.plugins.astrbot_plugin_feather_art import service
 from data.plugins.astrbot_plugin_feather_art.feather_art import audit, backends, render, svg_backend
@@ -393,3 +394,26 @@ def test_unknown_backend_is_reported_not_silently_defaulted():
         backends.get_backend("webgl")
     with pytest.raises(service.TraceError):
         service.TraceConfig(render_backend="webgl")
+
+
+def test_service_delivers_the_configured_backend(tmp_path):
+    """配置值要真的走到产物：同一个入口换成 svg，交付的 HTML 就是 svg 方言。
+
+    防的是「配置项存进去了、但没人读」这类哑配置——报告字段与文档方言必须一起变；
+    反向对照保证这条红线不是对谁都绿。
+    """
+    svg_out = tmp_path / "svg.html"
+    svg_report = service.trace_image(
+        util.png_gradient((48, 48)), "sketch", svg_out,
+        config=service.TraceConfig(render_backend="svg", progress=lambda _: None),
+        force=True)
+    assert svg_report["backend"] == "svg"
+    assert svg_report["audit"]["valid"], svg_report["audit"]["errors"]
+    assert "<svg" in svg_out.read_text(encoding="utf-8")
+
+    css_out = tmp_path / "css.html"
+    css_report = service.trace_image(
+        util.png_gradient((48, 48)), "sketch", css_out,
+        config=service.TraceConfig(progress=lambda _: None), force=True)
+    assert css_report["backend"] == "css"
+    assert "<svg" not in css_out.read_text(encoding="utf-8")

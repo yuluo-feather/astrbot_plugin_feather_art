@@ -151,3 +151,28 @@ def test_defaults_match_conf_schema():
             assert float(actual) == expected, f"{key}: {actual!r} != {expected!r}"
         else:
             assert actual == expected, f"{key}: {actual!r} != {expected!r}"
+
+
+def test_render_backend_config_matches_registry():
+    """配置面暴露的后端名必须与注册表对得上。
+
+    加了后端忘开配置、或配置里写了没实现的名字，都算脱节；default 也必须是注册表里
+    真有的那个（例如改了注册表名字忘了改配置，用户一存就是「未知的渲染后端」）。
+    """
+    import json
+    from pathlib import Path
+
+    from data.plugins.astrbot_plugin_feather_art.feather_art.backends import BACKENDS
+    schema_path = Path(__file__).resolve().parents[1] / "_conf_schema.json"
+    item = json.loads(schema_path.read_text(encoding="utf-8"))["conversion"]["items"]["render_backend"]
+    assert set(item["options"]) <= set(BACKENDS), (
+        "配置项里有注册表不认识的后端："
+        f"{sorted(set(item['options']) - set(BACKENDS))}")
+    assert item["default"] in BACKENDS
+    assert config.DEFAULTS["render_backend"] == item["default"]
+    assert "css" in item["options"], "css 是产品身份，配置面必须能选回来"
+    # 三个入口都读得到，且不被悄悄改写成别的后端
+    assert config.load_settings({"render_backend": "svg"})["render_backend"] == "svg"
+    assert config.load_settings({"conversion": {"render_backend": "svg"}})["render_backend"] == "svg"
+    assert config.load_settings({})["render_backend"] == "css"
+    assert config.load_settings({"render_backend": None})["render_backend"] == "css"

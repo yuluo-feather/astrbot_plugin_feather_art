@@ -212,6 +212,7 @@ class FeatherArtPlugin(Star):
                     max_mb=float(self.settings.get("max_mb", 64.0)),
                     fit_mb=fit_mb,
                     score=bool(self.settings.get("score", True)),
+                    render_backend=str(self.settings.get("render_backend", "css") or "css"),
                 )
                 report = await asyncio.to_thread(
                     trace_image, data, preset_key, out,

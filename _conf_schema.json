@@ -50,6 +50,17 @@
         ],
         "default": "scanline",
         "hint": "scanline-扫描线（逐像素还原、无碎块、任意缩放无缝，推荐）；vector-实例矢量轨迹（旧管线，支持补间）。"
+      },
+      "render_backend": {
+        "type": "string",
+        "description": "静态描摹渲染后端",
+        "_special": "select",
+        "options": [
+          "css",
+          "svg"
+        ],
+        "default": "css",
+        "hint": "css-纯 CSS 插画（默认，产品身份）；svg-内联 SVG（实验方言：体积更小、三个内核准逐位一致，产物里会出现内联 SVG）。只影响静态描摹，动图走动画线不受影响。"
       }
     }
   },

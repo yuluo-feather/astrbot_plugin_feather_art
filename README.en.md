@@ -111,6 +111,7 @@ User request (either entry)【main.py entry orchestration】
 ⑤ Tracing orchestration
    ├─ Static image【service.py trace_image】
    │     ├─ EXIF rotation → quantization → fragment merge → contour simplify → gradient fit → render → audit → atomic write
+   │     ├─ Render backend (render_backend): css = pure CSS artwork (default, the product identity) | svg = inline SVG (experimental dialect)
    │     └─ --fit N: over-budget jumps ladder steps directly from a size estimate (colors first, width last), no per-step full retries
    └─ Animation【service_animation.py trace_animation】
          ├─ Sampling: --sample N (clamped 8–96) > motion_sample config > adaptive to duration (48-frame cap)
@@ -140,6 +141,7 @@ Configurable from the AstrBot plugin panel:
 | `score` | `true` | compute the offline MAE similarity score |
 | `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
 | `animation_style` | `scanline` | animation rendering style: scanline (default; per-pixel, seamless at any zoom) | vector (legacy pipeline, supports tween) |
+| `render_backend` | `css` | static trace backend: css = pure CSS artwork (default, the product identity) | svg = inline SVG (experimental dialect: about half the bytes, bit-identical across engines; animations unaffected) |
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |

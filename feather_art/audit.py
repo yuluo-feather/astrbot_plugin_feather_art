@@ -212,6 +212,8 @@ def audit_html(document: str, dialect: str = "css") -> dict:
         errors.append("Expected exactly one illustration main")
     if not parser.has_csp:
         errors.append("Missing restrictive Content-Security-Policy")
+    # parser.styles 同时收 <style> 内容与元素的 style 属性（见 handle_starttag），
+    # 所以内联样式一样要过 url() 与禁用构造检查——它不是「只含 <style> 的串」。
     css = "\n".join(parser.styles)
     if "\\" in css or "/*" in css:
         errors.append("CSS escapes/comments are outside the generator contract")
@@ -228,8 +230,11 @@ def audit_html(document: str, dialect: str = "css") -> dict:
                 errors.append(f"Layer animation references missing keyframes: {name}")
     if dialect == "svg":
         fills = dict(FILL_RULE.findall(css))
+        # class 可能不止一个 token（如 class="f0 extra"）：逐 token 查。只取
+        # 最后一个会把带额外 token 的渐变 path 漏掉，统计悄悄偏低却不报错。
         gradient_fills = sum(1 for token in parser.paths
-                             if ANY_URL.search(fills.get(token.split()[-1] if token else "", "")))
+                             if any(ANY_URL.search(fills.get(part, ""))
+                                    for part in token.split()))
     else:
         gradient_fills = css.count("linear-gradient(")
     return {"valid": not errors, "errors": sorted(set(errors)), "shapes": parser.shapes,

@@ -417,3 +417,27 @@ def test_service_delivers_the_configured_backend(tmp_path):
         config=service.TraceConfig(progress=lambda _: None), force=True)
     assert css_report["backend"] == "css"
     assert "<svg" not in css_out.read_text(encoding="utf-8")
+
+
+def test_audit_counts_gradient_paths_regardless_of_class_order():
+    """一个 path 挂多个 class 时，渐变涂色要逐个 token 查到。
+
+    只取最后一个 token 的实现会把 class="f0 extra" 这类路径漏掉——它不报错，
+    只是统计悄悄偏低。判据取「顺序无关」：两种顺序都必须数得出来。
+    """
+    policy = "default-src 'none'; script-src 'none'; img-src 'none'"
+    template = (
+        '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">'
+        '<meta http-equiv="Content-Security-Policy" content="' + policy + '">'
+        '<title>t</title><style>.f0{fill:url(#g0)}</style></head><body>'
+        '<main class="illustration" role="img" aria-label="t">'
+        '<svg viewBox="0 0 10 10"><defs>'
+        '<linearGradient id="g0" gradientUnits="userSpaceOnUse" '
+        'x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/>'
+        '</linearGradient></defs>'
+        '<path class="__CLS__" d="M0 0L1 1Z"/></svg></main></body></html>')
+    for cls in ("f0", "f0 extra", "extra f0"):
+        result = audit.audit_html(template.replace("__CLS__", cls), "svg")
+        assert result["valid"], result["errors"]
+        assert result["gradient_fills"] == 1, cls

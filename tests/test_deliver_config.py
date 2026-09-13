@@ -52,6 +52,23 @@ def test_build_chain_types(tmp_path):
     assert chain[1].name.endswith(".html")
 
 
+def test_build_chain_readable_stem(tmp_path):
+    """地址栏甩不掉，文件名尾巴缩到最短：羽画_写意_0908-2214.html。"""
+    import re
+    html = tmp_path / "feather_1788695429_a1b502bc.html"
+    html.write_text("<html></html>", encoding="utf-8")
+    name = deliver.build_chain(_report(), html)[1].name
+    assert re.fullmatch(r"羽画_写意_\d{4}-\d{4}\.html", name), name
+
+
+def test_build_chain_odd_stem_passthrough(tmp_path):
+    """非标准 stem 原样保留，绝不因改名逻辑崩掉交付链。"""
+    html = tmp_path / "weird name.html"
+    html.write_text("<html></html>", encoding="utf-8")
+    name = deliver.build_chain(_report(), html)[1].name
+    assert name == "羽画_写意_weird name.html"
+
+
 # ---------- config ----------
 
 def test_defaults_when_no_config():

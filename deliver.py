@@ -3,7 +3,22 @@
 画是画出来了，怎么端到桌前——文案说人话、文件带好名字，这两件事都在这里。
 """
 
+import re
+import time
 from pathlib import Path
+
+_STEM = re.compile(r"^feather_(\d{10})_[0-9a-f]+$")
+
+
+def _readable_stem(stem: str) -> str:
+    """feather_1788695429_a1b502bc → 0908-2214。
+
+    地址栏甩不掉，那就把尾巴缩到最短：只留认得出「哪天哪一分钟」的部分。
+    """
+    match = _STEM.match(stem)
+    if not match:
+        return stem
+    return time.strftime("%m%d-%H%M", time.localtime(int(match.group(1))))
 
 
 def _mb(size: int) -> str:
@@ -50,5 +65,5 @@ def report_to_text(report: dict) -> str:
 def build_chain(report: dict, html_path: Path) -> list:
     """交付链：摘要文案 + HTML 文件。"""
     from astrbot.api.message_components import File, Plain
-    name = f"羽画_{report['preset']['name']}_{html_path.stem}.html"
+    name = f"羽画_{report['preset']['name']}_{_readable_stem(html_path.stem)}.html"
     return [Plain(report_to_text(report)), File(name=name, file=str(html_path))]

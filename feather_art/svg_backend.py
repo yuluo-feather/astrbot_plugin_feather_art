@@ -5,8 +5,12 @@
   每形状一百来字节掉到二十来字节；
 - 洞不靠零面积桥：nonzero 绕数填充吃方向，而环的方向归一化本来就在中间
   表示里做好了，SVG 这边把环原样写出去就行（fill-rule 一个字都不用写）；
-- 渐变走 defs：CSS 内联一条渐变才四十来字节，SVG 一条要一百多，所以渐变色
-  按量化键去重共享（角度 5°、端点色通道步长 8）。
+- 渐变走 defs：CSS 内联一条渐变才四十来字节，SVG 一条要一百多，所以同一条渐变
+  只写一份 def 反复引用。但「同一条」只能是完全同一条——键里带落位盒（userSpaceOnUse
+  的线是用户坐标，盒子不同线就不同），而区域互不相交、盒子几乎不重合，于是去重率
+  接近零：合成照 983 块 → 983 条、真实插画 993 块 → 993 条。试过把角度量化到 5°、
+  端点色量化到通道步长 8 来凑合并，两张图上省不到 0.1% 字节，却白搭 ±2.5° 走向和
+  ±4/255 端点色，遂去掉，只留精确键。
 
 坐标用画布像素，viewBox 就是画布，省掉百分比那一串字符；环到画布的映射统一
 按中间表示的盒子算：先按基准盒归一化，再按落位盒铺开——前景两盒相同于是
@@ -33,19 +37,9 @@ from .contract import BudgetExceeded
 from .geometry import hex_color, number
 from .paint import Gradient
 
-ANGLE_STEP = 5.0     # 渐变角度量化步长（度）：最坏偏差 2.5°，看不出来
-COLOR_STEP = 8       # 渐变端点色量化步长（通道）：最坏偏差 4/255
 COORD_DIGITS = 1     # 坐标小数位（单位：画布像素）
 CSP = ("default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; "
        "connect-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'")
-
-
-def _quantized_color(rgb) -> str:
-    """端点色量化到通道步长 COLOR_STEP（就近取整），返回 #rrggbb。"""
-    code = hex_color(rgb)
-    channels = (min(255, round(int(code[index:index + 2], 16) / COLOR_STEP) * COLOR_STEP)
-                for index in (1, 3, 5))
-    return "#" + "".join(f"{value:02x}" for value in channels)
 
 
 def _canvas_point(ring: np.ndarray, box, target) -> np.ndarray:
@@ -87,11 +81,12 @@ def _path_data(regions) -> str:
 
 
 class _GradientTable:
-    """渐变去重表：键 = 量化角度 + 量化端点色 + 落位盒。
+    """渐变去重表：键 = 角度 + 端点色 + 落位盒，完全相同的才共享。
 
     落位盒进键是没办法的事：CSS 的渐变线长度 = |dx|W + |dy|H，取决于盒子尺寸，
     而 SVG 的 userSpaceOnUse 还要知道盒子在哪。于是「同角度同色」并不足以共享，
-    能撞上的只有位置尺寸也一致的那些——去重率实测不高，如实记着。
+    能撞上的只有位置尺寸也一致的那些——去重率实测接近零（合成照 983→983、
+    真实插画 993→993），如实记着，别指望它省字节。
     """
 
     def __init__(self):
@@ -100,8 +95,8 @@ class _GradientTable:
 
     def reference(self, gradient: Gradient, target) -> str:
         origin, size = target
-        key = (round(gradient.angle / ANGLE_STEP),
-               _quantized_color(gradient.start), _quantized_color(gradient.end),
+        key = (gradient.angle,
+               hex_color(gradient.start), hex_color(gradient.end),
                round(float(origin[0]), COORD_DIGITS), round(float(origin[1]), COORD_DIGITS),
                round(float(size[0]), COORD_DIGITS), round(float(size[1]), COORD_DIGITS))
         if key not in self.names:
@@ -111,8 +106,8 @@ class _GradientTable:
 
     def defs(self) -> str:
         parts = []
-        for name, (step, start, end, origin_x, origin_y, width, height) in self.entries:
-            radians = math.radians(step * ANGLE_STEP)
+        for name, (angle, start, end, origin_x, origin_y, width, height) in self.entries:
+            radians = math.radians(angle)
             dx, dy = math.sin(radians), -math.cos(radians)
             length = abs(dx) * width + abs(dy) * height
             center_x, center_y = origin_x + width / 2, origin_y + height / 2
@@ -150,7 +145,7 @@ class _Fills:
 
 
 class SvgBackend:
-    """内联 SVG 后端：绝对坐标、nonzero 挖孔、渐变走 defs。"""
+    """内联 SVG 后端：紧凑坐标写法、nonzero 挖孔、渐变走 defs。"""
 
     name = "svg"
 

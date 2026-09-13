@@ -348,6 +348,27 @@ def test_gradient_defs_are_shared_when_geometry_matches():
     assert document.count("<linearGradient ") == stats["gradient_defs"] == 2
 
 
+def test_gradient_defs_are_not_rounded_into_shared_keys():
+    """红线：角度/端点色只按精确值共享——不量化凑合并。
+
+    曾经把角度量化到 5°、端点色量化到通道步长 8 来换合并，两张真实图上省不到
+    0.1% 字节却白搭偏差，已去掉。这条钉住它别回头：差 1.5° 就该是两条 def，
+    端点色差 3/255 也是两条。
+    """
+    base = _gradient()
+    near_angle = Region([_ring(10, 0, 0)],
+                        Gradient(46.5, base.paint.start, base.paint.end),
+                        ((0.0, 0.0), (10.0, 10.0)), ((0.0, 0.0), (10.0, 10.0)))
+    shifted = np.clip(base.paint.start + 3, 0, 255)
+    near_color = Region([_ring(10, 0, 0)],
+                        Gradient(45.0, shifted, base.paint.end),
+                        ((0.0, 0.0), (10.0, 10.0)), ((0.0, 0.0), (10.0, 10.0)))
+    document, stats = _render_svg(_illustration([base, near_angle, near_color]))
+    assert stats["gradient_defs"] == 3
+    assert document.count("<linearGradient ") == 3
+
+
+
 # ---- 方言审计的拒收面 ----
 
 @pytest.mark.parametrize("mutate,needle", [

@@ -34,7 +34,7 @@
 
 ---
 
-一款基于 AstrBot 的描图插件，本羽亲手写的。把图片**离线描摹**成纯 HTML + CSS 单文件插画——没有 `<img>`、没有 SVG、没有 Canvas、没有 JavaScript、没有 base64、没有外部资源，打开它只需要一个浏览器。动图（GIF / WebP）也能描成**纯 CSS 动画**，帧间图层跟踪 + @keyframes 时间线，浏览器直接循环播放。
+一款基于 AstrBot 的描图插件，本羽亲手写的。把图片**离线描摹**成单文件插画——默认档是**纯 HTML + CSS**：没有 `<img>`、没有 SVG、没有 Canvas、没有 JavaScript、没有 base64、没有外部资源，打开它只需要一个浏览器。（另有一档可选的内联 SVG 方言，同为单文件、同样零脚本零外链，见配置表 `render_backend`。）动图（GIF / WebP）也能描成**纯 CSS 动画**，帧间图层跟踪 + @keyframes 时间线，浏览器直接循环播放。
 
 ## 🎨 功能特点
 
@@ -112,7 +112,7 @@
    ├─ 静态图【service.py trace_image】
    │     ├─ EXIF 转正 → 量化 → 碎块合并 → 轮廓简化 → 渐变拟合 → 渲染 → 审计 → 原子落盘
    │     ├─ 渲染后端（render_backend）：css 纯 CSS 插画（默认，产品身份）｜ svg 内联 SVG（实验方言）
-   │     └─ --fit N：超预算按体积估算直接跳档（颜色优先、宽度兜底），不逐档重试
+   │     └─ --fit N：超预算按体积估算直接跳档（颜色优先、宽度兜底），不逐档重试；预算判的是**产出实测字节**，所以同一目标的 svg 档常少降一档
    └─ 动图【service_animation.py trace_animation】
          ├─ 采样：--sample N（8~96 钳制）＞ motion_sample 配置 ＞ 按时长自适应（上限 48 帧）
          ├─ 帧间图层跟踪（确定性贪心：IoU + 颜色 + 质心打分）→ @keyframes 时间线
@@ -120,7 +120,7 @@
    │
    ▼
 ⑥ 契约审计与评分【feather_art/audit.py · score.py】
-   ├─ 审计红线：无 <script> / <img> / SVG / Canvas / base64 / 外链
+   ├─ 审计红线（按方言分述）：两档都不许 <script> / <img> / Canvas / base64 / 外链；css 档另不许 SVG，svg 档只许 svg / g / defs / clipPath / path / linearGradient / stop 与同文档锚点引用
    └─ 可选离线 MAE 相似度评分（score，默认开）
    │
    ▼

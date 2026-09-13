@@ -209,8 +209,8 @@ html,body{{margin:0;min-height:100%;background:{hex_color(illustration.backgroun
         foundation = illustration.foundation
         if foundation is None:
             return "", ""
-        clip = ("<clipPath id=\"c0\"><path d=\"" +
-                _path_data([_ClipRegion(foundation.clip)]) + "\"/></clipPath>")
+        clip = ('<clipPath id="c0"><path d="' +
+                _path_data([_ClipRegion(foundation.clip)]) + '"/></clipPath>')
         stats["polygon_vertices"] += sum(len(ring) for ring in foundation.clip.rings)
         layers = []
         for region in foundation.regions:

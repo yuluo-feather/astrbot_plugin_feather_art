@@ -12,6 +12,14 @@
 按中间表示的盒子算：先按基准盒归一化，再按落位盒铺开——前景两盒相同于是
 原样，底板基准盒是降采样网格、落位盒是整幅画布，于是被拉伸铺满。
 
+d 属性按增量写：顶点密的地方走相对（子路径首点相对上一条子路径收尾点、其余
+顶点走隐式相对 lineto），顶点稀的地方照旧写绝对——两种写法在同一个环上比长度，
+谁短用谁，所以永远不会比纯绝对写法长。实测同一张 480x360 合成照片稿：
+d 属性 536045 → 355195 B（-33.7%），整份文档 786241 → 605391 B（占 CSS 方言
+67.4%）。这一步只换写法不动几何——增量是在已经量化过的整数刻度上取的差值，
+逐点解回绝对坐标与原写法完全一致；浏览器 2.08 倍放大逐像素比，差 >32 的只有
+2 个像素（同一对图里 CSS 与 SVG 的方言差是 483 个）。
+
 成品仍是 .html 外壳（P-1 选型）：独立 .svg 在聊天里是文件不是预览，而且拿不到
 meta CSP；内联进 HTML 一样都不丢。老内核不用兜底提示——svg 它本来就认。
 """
@@ -48,13 +56,33 @@ def _canvas_point(ring: np.ndarray, box, target) -> np.ndarray:
 
 
 def _path_data(regions) -> str:
-    """若干区域 → 一条 d：每个环一个子路径，坐标即画布像素。"""
+    """若干区域 → 一条 d：每个环一个子路径，坐标即画布像素。
+
+    每个环自己挑写法：顶点密（相邻点只差几个像素）时增量短得多，就写相对
+    （首点相对上一条子路径收尾点、其余顶点走隐式相对 lineto，m 之后的坐标对
+    本来就按相对解释）；顶点稀的时候绝对写法反而更短（小画布粗几何实测
+    267 vs 233 B），那就照旧写绝对。两种写法都在 10**COORD_DIGITS 的整数刻度
+    上取数——同精度相减仍是同精度，换写法不动几何，逐点解得回来。
+    """
+    scale = 10 ** COORD_DIGITS
     parts = []
+    previous = (0, 0)                                  # 上一条子路径的收尾点（整数刻度）
     for region in regions:
         for ring in region.rings:
             points = _canvas_point(np.asarray(ring, np.float64), region.box, region.target)
-            parts.append("M" + " ".join(f"{number(px, COORD_DIGITS)} {number(py, COORD_DIGITS)}"
-                                        for px, py in points) + "Z")
+            units = [(int(x), int(y)) for x, y in np.rint(points * scale).astype(np.int64)]
+            absolute = "M" + " ".join(f"{number(x / scale, COORD_DIGITS)} "
+                                      f"{number(y / scale, COORD_DIGITS)}" for x, y in units)
+            tokens = ["m", number((units[0][0] - previous[0]) / scale, COORD_DIGITS),
+                      number((units[0][1] - previous[1]) / scale, COORD_DIGITS)]
+            cursor = units[0]
+            for step in units[1:]:
+                tokens.append(number((step[0] - cursor[0]) / scale, COORD_DIGITS))
+                tokens.append(number((step[1] - cursor[1]) / scale, COORD_DIGITS))
+                cursor = step
+            relative = " ".join(tokens)
+            parts.append((relative if len(relative) <= len(absolute) else absolute) + "Z")
+            previous = units[0]
     return "".join(parts)
 
 

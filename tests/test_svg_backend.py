@@ -19,7 +19,7 @@ import pytest
 from data.plugins.astrbot_plugin_feather_art import service
 from data.plugins.astrbot_plugin_feather_art.feather_art import audit, backends, render, svg_backend
 from data.plugins.astrbot_plugin_feather_art.feather_art.contract import DocumentConfig
-from data.plugins.astrbot_plugin_feather_art.feather_art.geometry import bridge_rings
+from data.plugins.astrbot_plugin_feather_art.feather_art.geometry import bridge_rings, number
 from data.plugins.astrbot_plugin_feather_art.feather_art.paint import Gradient, Solid
 from data.plugins.astrbot_plugin_feather_art.feather_art.regions import (
     Clip, Foundation, Illustration, Region,
@@ -128,9 +128,11 @@ def test_hole_is_two_subpaths_without_bridge():
     document, stats = _render_svg(_illustration([_solid((10, 20, 30), rings)]))
     assert stats["paths"] == 1
     data = _path_data(document)
-    assert data.count("M") == data.count("Z") == 2
+    assert data.count("m") + data.count("M") == data.count("Z") == 2
     # 两个环各 8 个数，一个桥点都不多（桥会塞进一段往返线）
     assert len(re.findall(r"-?\d+(?:\.\d+)?", data)) == 16
+
+
 
 
 def test_foundation_rings_are_stretched_to_the_canvas():
@@ -139,8 +141,165 @@ def test_foundation_rings_are_stretched_to_the_canvas():
     layer = Region([_ring(2, 0, 0)], Solid(np.array([9, 9, 9], np.float64)), grid, BOX)
     clip = Clip([_ring(16, 0, 0)], BOX)
     document, _ = _render_svg(_illustration([], Foundation(clip, [layer])))
-    assert '<clipPath id="c0"><path d="M0 0 16 0 16 16 0 16Z"/></clipPath>' in document
-    assert '<path class="f0" d="M0 0 8 0 8 8 0 8Z"/>' in document   # 4 倍：粗网格铺满画布
+    clip_data = re.search(r'<clipPath id="c0"><path d="([^"]+)"', document).group(1)
+    layer_data = re.search(r'<path class="f0" d="([^"]+)"', document).group(1)
+    assert np.allclose(np.asarray(_decode(clip_data)[0]),
+                       [[0, 0], [16, 0], [16, 16], [0, 16]])
+    assert np.allclose(np.asarray(_decode(layer_data)[0]),
+                       [[0, 0], [8, 0], [8, 8], [0, 8]])          # 4 倍：粗网格铺满画布
+
+
+
+# ---- d 属性写法：相对增量（只换写法，不动几何） ----
+
+_NUMBER = re.compile(r"[MmZz]|-?(?:\d+\.?\d*|\.\d+)")
+
+
+def _decode(data, digits=svg_backend.COORD_DIGITS):
+    """独立解码器：按 SVG 规则把 d 解回每个子路径的绝对顶点（画布像素）。
+
+    刻意不复用后端的格式化代码——这条红线的价值就在两边独立。增量累积写错、
+    首点参照写错、正则漏了 ".5" 这种省前导零的写法（会当成 5），都会在这里对不上。
+    """
+    scale = 10 ** digits
+    tokens = _NUMBER.findall(data)
+    rings, ring, cursor, start, mode, index = [], None, (0.0, 0.0), None, "M", 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "Z":
+            cursor, index = start, index + 1
+            continue
+        if token in "Mm":
+            mode, start, index = token, None, index + 1
+            continue
+        step = (round(float(token) * scale), round(float(tokens[index + 1]) * scale))
+        index += 2
+        if start is None:
+            point = (cursor[0] + step[0], cursor[1] + step[1]) if mode == "m" else step
+            ring = [point]
+            rings.append(ring)
+            start = point
+        else:
+            tail = ring[-1]
+            ring.append((tail[0] + step[0], tail[1] + step[1]) if mode == "m" else step)
+        cursor = ring[-1]
+    return [[(x / scale, y / scale) for x, y in points] for points in rings]
+
+
+def _canvas_rings(illustration):
+    """文档顺序上的全部环，坐标已落到画布：剪影、底板各层、前景。"""
+    def mapped(rings, box, target):
+        origin, size = (np.asarray(part, np.float64) for part in box)
+        target_origin, target_size = (np.asarray(part, np.float64) for part in target)
+        return [target_origin + (np.asarray(ring, np.float64) - origin) * (target_size / size)
+                for ring in rings]
+    rings = []
+    if illustration.foundation is not None:
+        clip = illustration.foundation.clip
+        rings += mapped(clip.rings, clip.box, clip.box)
+        for region in illustration.foundation.regions:
+            rings += mapped(region.rings, region.box, region.target)
+    for region in illustration.foreground:
+        rings += mapped(region.rings, region.box, region.target)
+    return rings
+
+
+def _dense_rings():
+    """稠密轮廓：相邻顶点只差几个像素（ε 简化后的真实成品就长这样）。"""
+    def noisy(x0, y0, step_x, step_y, count, wobble):
+        index = np.arange(count, dtype=np.float64)
+        return np.stack([x0 + step_x * index + wobble * np.sin(index * 1.7),
+                         y0 + step_y * index + wobble * np.cos(index * 2.3)], axis=1)
+
+    return [noisy(30.0, 30.0, 4.7, 1.1, 90, 2.0), noisy(450.0, 330.0, -6.1, -1.7, 60, 1.5)]
+
+
+def _sparse_rings():
+    """稀疏大环：顶点少、跨度大——增量跟绝对坐标一样长，相对写法就亏。"""
+    return [np.array([[5, 5], [475, 5], [475, 355], [5, 355]], np.float64),
+            np.array([[470, 350], [10, 344], [6, 10], [474, 8]], np.float64)]
+
+
+def _spread_art(rings=None):
+    """画布 480x360 + 底板 + 剪影；每个环一块区域（同色，会被合并成一条 path）。"""
+    if rings is None:
+        rings = _dense_rings() + _sparse_rings()
+    grid = ((0.0, 0.0), (4.0, 4.0))
+    layer = Region([_ring(2, 1, 1)], Solid(np.array([9, 9, 9], np.float64)), grid,
+                   ((0.0, 0.0), (480.0, 360.0)))
+    clip = Clip([np.array([[0, 0], [480, 0], [480, 360], [0, 360]], np.float64)],
+                ((0.0, 0.0), (480.0, 360.0)))
+    return _illustration([_solid((10, 20, 30), [ring]) for ring in rings],
+                         Foundation(clip, [layer]), size=(480, 360))
+
+
+def _single_path_art(rings):
+    """只留前景、同色：会合成一条 path，跟测试侧拼的纯策略写法能一比一。"""
+    return _illustration([_solid((10, 20, 30), [ring]) for ring in rings], None, size=(480, 360))
+
+
+def _pure_d_data(illustration, relative):
+    """测试侧自己拼的「纯策略」写法（全相对 / 全绝对），用来当上界。
+
+    跟后端各写各的：这条红线量的是「有没有比两种纯策略都短」，不是「哪种写法好看」。
+    两边若有一边算错，逐点解回绝对坐标那条红线会先红。
+    """
+    digits = svg_backend.COORD_DIGITS
+    scale = 10 ** digits
+    parts, previous = [], (0, 0)
+    for ring in _canvas_rings(illustration):
+        units = [(int(round(x * scale)), int(round(y * scale))) for x, y in ring]
+        point = lambda value: number(value / scale, digits)      # noqa: E731
+        if not relative:
+            parts.append("M" + " ".join(f"{point(x)} {point(y)}" for x, y in units) + "Z")
+        else:
+            tokens = ["m", point(units[0][0] - previous[0]), point(units[0][1] - previous[1])]
+            cursor = units[0]
+            for step in units[1:]:
+                tokens += [point(step[0] - cursor[0]), point(step[1] - cursor[1])]
+                cursor = step
+            parts.append(" ".join(tokens) + "Z")
+        previous = units[0]
+    return "".join(parts)
+
+
+
+
+def test_path_data_decodes_back_to_the_same_geometry():
+    """红线：拿独立解码器逐环逐点解回绝对坐标，必须与中间表示一致。
+
+    写的是增量、读的是绝对——只要有一个环的首点参照或累积方向写错，这里必红。
+    """
+    document, _ = _render_svg(_spread_art())
+    decoded = [ring for chunk in re.findall(r' d="([^"]+)"', document) for ring in _decode(chunk)]
+    expected = _canvas_rings(_spread_art())          # 契约是「写到 COORD_DIGITS 位」，期望值取同一位
+    assert len(decoded) == len(expected)
+    for got, want in zip(decoded, expected):
+        assert len(got) == len(want)
+        assert np.allclose(np.asarray(got), np.round(want, svg_backend.COORD_DIGITS),
+                           atol=1e-9), (got, want)
+
+
+def test_writing_beats_both_pure_strategies():
+    """红线：每个环自己挑写法——输出必须比「全写绝对」「全写相对」两种纯策略都短。
+
+    拿两种纯策略当上界，就不必断言某个环具体写成哪种形式（那种断言会被「刚好差一
+    两个字符」的几何左右）。变异：强制任一种纯策略，这条立刻红。
+    """
+    illustration = _single_path_art(_dense_rings() + _sparse_rings())
+    document, _ = _render_svg(illustration)
+    written = "".join(re.findall(r' d="([^"]+)"', document))
+    absolute, relative = _pure_d_data(illustration, False), _pure_d_data(illustration, True)
+    assert len(relative) < len(absolute)                     # 两种纯策略确实分得出高下
+    assert len(written) < len(absolute), (len(written), len(absolute), len(relative))
+    assert len(written) < len(relative), (len(written), len(absolute), len(relative))
+
+
+
+
+
+
+
 
 
 # ---- 数据层：两个后端吃同一份中间表示 ----
@@ -200,7 +359,7 @@ def test_gradient_defs_are_shared_when_geometry_matches():
     (lambda doc: doc.replace("</style>", ".fx{fill:url(https://e.example/x.svg)}</style>"),
      "same-document"),
     (lambda doc: re.sub(r"url\(#g\d+\)", "url(#nope)", doc, count=1), "Dangling"),
-    (lambda doc: doc.replace('d="M', 'x="M', 1), "lacks a d attribute"),
+    (lambda doc: re.sub(r' d="', ' x="', doc, count=1), "lacks a d attribute"),
 ])
 def test_svg_audit_rejects(mutate, needle):
     report = audit.audit_html(mutate(_gradient_doc()), "svg")

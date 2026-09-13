@@ -5,6 +5,42 @@ from io import BytesIO
 from PIL import Image
 
 
+def png_photo_like(size=(180, 140), seed=7) -> bytes:
+    """确定性「照片感」PNG：平滑渐变 + 三块彩色团块 + 挖孔圆环 + 细线 + 颗粒。
+
+    存在的理由：小块纯色图碰不到管线的分支（渐变拟合、孔洞桥接、碎块合并、
+    精度降位），基线也就锁不住东西。这张图刻意把几条路都走一遍——
+    平滑渐变喂 paint 的平面拟合、圆环喂 component_rings 的洞链、
+    2px 细线喂碎块分组、颗粒喂 merge 的保守策略。
+
+    确定性由三件事保证：seeded 生成器、固定顺序的绘制调用、固定编码参数；
+    跨依赖版本（numpy / opencv）不保证一致，故基线只在同一环境内当红线。
+    """
+    import cv2
+    import numpy as np
+
+    width, height = size
+    ys, xs = np.mgrid[0:height, 0:width].astype(np.float32)
+    canvas = np.empty((height, width, 3), np.float32)
+    canvas[..., 0] = 90 + 60 * np.sin(xs / 23.0) + 40 * np.cos(ys / 19.0)
+    canvas[..., 1] = 120 + 50 * np.cos(ys / 14.0) + 30 * np.sin((xs + ys) / 31.0)
+    canvas[..., 2] = 150 + 45 * np.sin((xs - ys) / 21.0)
+    for cx, cy, radius, color in ((width * .25, height * .35, width * .18, (220, 120, 90)),
+                                  (width * .70, height * .30, width * .14, (70, 160, 200)),
+                                  (width * .50, height * .78, width * .20, (200, 200, 120))):
+        distance = np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2)
+        weight = np.clip(1 - distance / radius, 0, 1)[..., None]
+        canvas = canvas * (1 - weight) + np.asarray(color, np.float32) * weight
+    ring = (int(width * .82), int(height * .72))
+    cv2.circle(canvas, ring, int(width * .09), (40, 40, 60), -1)
+    cv2.circle(canvas, ring, int(width * .05), (230, 230, 235), -1)
+    cv2.line(canvas, (10, height - 12), (width - 10, height - 30), (25, 25, 25), 2)
+    canvas += np.random.default_rng(seed).normal(0, 6, canvas.shape)
+    ok, buffer = cv2.imencode(".png", np.clip(canvas, 0, 255).astype(np.uint8))
+    assert ok
+    return buffer.tobytes()
+
+
 def png_bytes(size=(64, 64), color=(255, 255, 255), mode="RGB") -> bytes:
     """纯色 PNG 字节流。"""
     buf = BytesIO()

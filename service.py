@@ -62,7 +62,10 @@ class TraceConfig:
                 value = default
             setattr(self, name, max(0.0, value))
         if self.render_backend not in BACKENDS:
-            # 不认识的名字当场报出来，别等画完一整张才发现（也不悄悄退回 css）
+            # 不认识的名字当场报出来，别等画完一整张才发现（也不悄悄退回 css）。
+            # 这道校验只对静态后端有意义，但动画线也会构造 TraceConfig、跟着跑
+            # 一次校验——注册表改名会连带把动画线拦在门口。这是有意的顺序
+            # （宁可当场报错），但别误以为动画线用得上后端。
             raise TraceError(f"未知的渲染后端：{self.render_backend}"
                              f"（可用的有 {'、'.join(sorted(BACKENDS))}）")
 

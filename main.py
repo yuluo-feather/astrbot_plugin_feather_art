@@ -189,6 +189,9 @@ class FeatherArtPlugin(Star):
                 motion_name = resolve("motion").name
                 await event.send(MessageChain([Plain(
                     f"收到 {fmt} 动图 {frames} 帧，开始描摹动画（{motion_name}档）……")]))
+                # 动画线的参数表照静态线的形状发，但两个字段在这条线上不算数：
+                # render_backend 只为过 TraceConfig 的注册校验（动画不走静态
+                # 后端），score 也没有相似度计算可喂——别把它们当动画开关。
                 traced = TraceConfig(
                     max_mb=float(self.settings.get("max_mb", 64.0)),
                     fit_mb=0.0,

@@ -22,6 +22,8 @@ def _readable_stem(stem: str) -> str:
 
 
 def _mb(size: int) -> str:
+    # 小于 1 KiB 会显示成 "0 KB"——够不着：成品自带约 1.7 KiB 的模板，
+    # 静态线最小也有 1715 B（实测 1x1 空图），别为这个分支加字节数格式。
     return f"{size / 1024 / 1024:.2f} MiB" if size >= 1024 * 1024 else f"{size / 1024:.0f} KB"
 
 

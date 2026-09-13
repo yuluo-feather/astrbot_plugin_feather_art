@@ -125,7 +125,7 @@ User request (either entry)【main.py entry orchestration】
    │
    ▼
 ⑦ Delivery【deliver.py】
-   ├─ Summary text (human words, no raw paths) + a single-file HTML
+   ├─ Summary text (human words, no raw paths) + a single-file HTML (readable filename: 羽画_工笔_0908-2214.html)
    └─ Failure layering: explainable errors get human words; internal exceptions go to logger with a fixed fallback line
 ```
 

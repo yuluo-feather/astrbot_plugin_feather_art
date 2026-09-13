@@ -288,3 +288,21 @@ def test_mask_rings_hole_orientation():
     rings = geometry.mask_rings(mask, 0.5, 8)
     assert len(rings) == 2
     assert geometry._signed_area(rings[0]) * geometry._signed_area(rings[1]) < 0
+
+
+def test_version_sources_agree():
+    """版本号两处必须一致：metadata.yaml（市场读的）与 feather_art.__version__（运行时报的）。
+
+    发版最容易漏的一步就是只改一处——用户装到的版本号与实际不符，出了问题都说不清
+    跑的是哪一版。
+    """
+    import pathlib
+    import re
+
+    from data.plugins.astrbot_plugin_feather_art.feather_art import __version__
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    meta = (root / "metadata.yaml").read_text(encoding="utf-8")
+    declared = re.search(r"^version:\s*(\S+)", meta, re.M).group(1)
+    assert declared == __version__, (
+        "metadata.yaml 声明 " + declared + "，包内 __version__ 是 " + __version__)

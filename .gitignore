@@ -134,3 +134,6 @@ repos/
 _obsolete_archive/
 feather_art_output/
 .angel/
+
+# 羽画专有：开发账本（dev 本地过程文档，run 目录里会被对账脚本排除）
+/DEVLOG.md

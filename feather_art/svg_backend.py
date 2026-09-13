@@ -149,6 +149,7 @@ class SvgBackend:
     """内联 SVG 后端：紧凑坐标写法、nonzero 挖孔、渐变走 defs。"""
 
     name = "svg"
+    label = "SVG"
 
     def render_static(self, illustration, config) -> tuple:
         gradients = _GradientTable()

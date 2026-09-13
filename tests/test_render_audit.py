@@ -165,3 +165,51 @@ def test_title_escaped_in_both_static_backends():
         assert doc.count("&lt;b&gt;") == 2, backend      # title 与 aria-label 各一处
         result = audit.audit_html(doc, backend)
         assert result["valid"], result["errors"]
+
+
+def test_every_backend_owns_a_label():
+    """前提断言：注册表里每个后端都得有一句方言自称，缺了先红在这里。
+
+    没有这条，将来接第三门方言时忘了写 label，报错的会是 backend_title 里的
+    AttributeError——比「忘了自称」本身难读得多。
+    """
+    for name, backend in backends.BACKENDS.items():
+        assert getattr(backend, "label", ""), name
+        assert backend.label not in ("css", "svg"), name      # 自称是人话，不是注册键
+
+
+def test_default_title_claims_its_own_dialect():
+    """默认标题跟后端自称走：产物说的是什么方言，页签与朗读标签上就写什么。
+
+    挡的是 2026-09-13 下午那次的实况：配置切到 svg，产出的文档在页签上还写着
+    「羽画 · 纯 CSS 描摹」——描的是 SVG，自称是 CSS，用户第一眼看到的就是错的。
+    """
+    reference, labels, palette = _small_art()
+    for backend, claim, taboo in (("css", "纯 CSS", "SVG"), ("svg", "SVG", "纯 CSS")):
+        title = backends.backend_title(backend)
+        assert claim in title and taboo not in title, backend
+        doc, _ = render.render_document(
+            reference, labels, palette, (8, 8), background=(255, 255, 255),
+            title=title, epsilon=0.5, gradients=False, underpainting=False,
+            max_bytes=10_000_000, progress=lambda _: None, backend=backend)
+        assert f"<title>{title}</title>" in doc, backend
+        assert f'aria-label="{title}"' in doc, backend      # 两处都要跟着走
+        assert taboo not in doc, backend                    # 也不许顺手写另一门方言
+        result = audit.audit_html(doc, backend)
+        assert result["valid"], result["errors"]
+
+
+def test_css_default_document_unchanged_by_title_rework():
+    """等价性对照：静态默认路径（css + 不给标题）出稿与写死标题时逐字节相同。
+
+    这条是给上面那条兜底的——标题改成「跟后端走」的过程中，最容易顺手把 css
+    这条产品身份路径的字面量也动了；动没动不看代码看产物。
+    """
+    reference, labels, palette = _small_art()
+    kwargs = {"background": (255, 255, 255), "epsilon": 0.5, "gradients": False,
+              "underpainting": False, "max_bytes": 10 ** 7, "progress": lambda _: None}
+    auto, _ = render.render_document(reference, labels, palette, (8, 8),
+                                     title=backends.backend_title("css"), **kwargs)
+    frozen, _ = render.render_document(reference, labels, palette, (8, 8),
+                                       title="羽画 · 纯 CSS 描摹", **kwargs)
+    assert auto == frozen

@@ -211,6 +211,10 @@ tests/                # pytest suite (grows with development)
 
 ## 📜 Changelog
 
+#### Unreleased
+
+- Fix: with the inline-SVG dialect selected, the artifact no longer labels itself "pure CSS" in the browser tab and the screen-reader label — the title follows the actual dialect
+
 #### v0.3.1
 
 - Fix: the animation size cap (`max_mb`) was not enforced on the default scanline style, so oversized output was delivered anyway; both animation paths honour it now — over the cap you just get told the limit, nothing is written

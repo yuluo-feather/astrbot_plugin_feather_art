@@ -19,7 +19,7 @@ from typing import Callable
 
 from .feather_art import __version__
 from .feather_art.audit import audit_html
-from .feather_art.backends import BACKENDS
+from .feather_art.backends import BACKENDS, backend_title
 from .feather_art.contract import BudgetExceeded
 from .feather_art.imaging import load_image
 from .feather_art.merge import merge_regions
@@ -37,7 +37,9 @@ class TraceConfig:
     """一次描摹的全部可调参数。"""
 
     background: tuple[int, int, int] = (255, 255, 255)
-    title: str = "羽画 · 纯 CSS 描摹"
+    # 文档标题（同时是页签与朗读标签）。留空 = 跟着渲染后端自称走，
+    # 见 backends.backend_title——方言切换时标题得跟着换，不然 SVG 稿自称纯 CSS
+    title: str = ""
     max_mb: float = 64.0
     fit_mb: float = 0.0      # 0 = 不启用自动降档
     score: bool = True
@@ -219,6 +221,8 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
     原子落盘。任何一步失败都抛出 TraceError（面向用户的文案）。
     """
     traced = config or TraceConfig()
+    # 标题跟着后端自称走；调用方给了标题就用调用方的（TraceConfig 注释）
+    title = traced.title or backend_title(traced.render_backend)
     preset = resolve(preset_key)
     start = time.perf_counter()
     if out_path.suffix.lower() != ".html":
@@ -263,7 +267,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
         try:
             document, stats = render_document(
                 reference, labels, palette, original,
-                background=traced.background, title=traced.title,
+                background=traced.background, title=title,
                 epsilon=candidate["epsilon"], gradients=traced.gradients,
                 underpainting=traced.underpainting, max_bytes=target,
                 progress=traced.progress, score=traced.score,

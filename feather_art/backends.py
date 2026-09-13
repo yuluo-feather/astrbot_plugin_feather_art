@@ -31,6 +31,9 @@ class RenderBackend(Protocol):
     """
 
     name: str
+    # 文档标题里的方言自称（页签与朗读标签上都看得见）。跟 name 分开：用户读到的是
+    # 「纯 CSS」这种人话，不是注册键。两门方言各自认领自己那一个，一个都不能缺。
+    label: str
 
     def render_static(self, illustration, config: DocumentConfig) -> tuple:
         """返回 (文档字符串, 统计 dict)。超预算抛 BudgetExceeded。"""
@@ -124,6 +127,7 @@ class CssBackend:
     """纯 HTML + CSS 单文件后端：纯色共享类、渐变内联、clip-path 裁形。"""
 
     name = "css"
+    label = "纯 CSS"
 
     def render_static(self, illustration, config: DocumentConfig) -> tuple:
         writer = CssShapeWriter(illustration)
@@ -185,3 +189,12 @@ def get_backend(name: str) -> RenderBackend:
     except KeyError:
         raise ValueError(
             f"未知的渲染后端：{name}（可用的有 {'、'.join(sorted(BACKENDS))}）") from None
+
+
+def backend_title(name: str) -> str:
+    """默认文档标题：跟着后端自称走，别让 SVG 产物管自己叫纯 CSS。
+
+    自称后面那个空格是给「纯 CSS」留的——CSS 这条产品身份路径的标题字面量
+    一直是「羽画 · 纯 CSS 描摹」，默认路径的产物必须逐字节不变（基线红线盯着）。
+    """
+    return f"羽画 · {get_backend(name).label} 描摹"

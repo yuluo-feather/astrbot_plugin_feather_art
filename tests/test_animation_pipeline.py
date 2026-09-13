@@ -36,11 +36,15 @@ def test_decode_frames_rejects_single():
 
 
 def test_decode_frames_adaptive_sample():
-    """采样按时长自适应：6 秒 60 帧 → 约 4 帧/秒 ≈ 24 帧，不再死采 16 帧。"""
+    """采样按时长自适应：6 秒 60 帧 → 约 4 帧/秒 ≈ 24 帧，不再死采 16 帧。
+
+    avg 语义为"保留帧平均展示时长"（含被跳帧摊还的时间）：6s ÷ 24 = 0.25s
+    ≈ 4fps；旧实现只统计保留帧自身的 0.1s，会把 6s 动画压成 2.4s。
+    """
     frames, size, avg, total = decode_frames(util.gif_n_frames(60), 512,
                                              (255, 255, 255))
     assert total == 60 and len(frames) == 24
-    assert avg == pytest.approx(0.1, abs=0.02)
+    assert avg == pytest.approx(0.25, abs=0.02)
 
 
 def test_decode_frames_long_caps_at_limit():
@@ -71,3 +75,14 @@ def test_trace_animation_tween_and_report(tmp_path):
     doc = (tmp_path / "t.html").read_text(encoding="utf-8")
     assert "linear" in doc and rep["animation"]["tween"] is True
     assert rep["audit"]["valid"]
+
+
+def test_trace_animation_fixed_sample(tmp_path):
+    """sample_frames=20：60 帧动图固定采 20 帧（覆盖按时长自适应）。"""
+    rep = service.trace_animation(
+        util.gif_n_frames(60), "motion", tmp_path / "s.html",
+        config=service.TraceConfig(progress=lambda _: None),
+        sample_frames=20, force=True, report_path=tmp_path / "s.json")
+    assert rep["animation"]["frames"] == 20
+    assert rep["animation"]["original_frames"] == 60
+    assert rep["audit"]["valid"], rep["audit"]["errors"]

@@ -62,13 +62,15 @@ def load_image(source: SourceLike, max_width: int, matte: tuple[int, int, int]) 
 
 
 def decode_frames(source: SourceLike, max_width: int, matte: tuple[int, int, int],
-                  sample_limit: int = 48) -> tuple[list[np.ndarray], tuple[int, int], float, int]:
+                  sample_limit: int = 48, fixed_frames: int = 0) -> tuple[list[np.ndarray], tuple[int, int], float, int]:
     """多帧动图 → (采样后的帧数组列表, 原始尺寸, 平均帧时长秒)。
 
     - 只伺候多帧（GIF / WebP 动图）；单帧去 load_image；
     - 采样密度按时长自适应：目标约 4 帧/秒，下限 8 帧，硬上限 sample_limit
       （短动画近全帧还原节奏，长动画按上限兜底——固定 16 帧抽 2000+ 帧
       会隔 5 秒多才跳一帧，成品自然"诡异"）；
+    - fixed_frames > 0：固定采样数（用户显式 --sample 指定的密度，直接按
+      N 帧等距抽，不再自适应——更流畅还是更省体积由用户自己掂量）；
     - 每帧都走与 load_image 相同的合成/缩放/去噪，待遇一样；
     - 平均帧时长取自帧元数据（GIF/WebP 的 duration），查不到按 0.125s 记。
     """
@@ -80,22 +82,29 @@ def decode_frames(source: SourceLike, max_width: int, matte: tuple[int, int, int
         # 首帧时长估算全局节奏（GIF/WebP 帧间隔通常均匀），按秒定采样数
         handle.seek(0)
         est_duration = _frame_duration(handle) * total
-        if est_duration > 0:
+        if fixed_frames > 0:
+            sample = min(fixed_frames, total)
+        elif est_duration > 0:
             sample = int(min(sample_limit, max(8, est_duration * 4)))
         else:
             sample = min(sample_limit, total)
         chosen = sorted(set(round(x) for x in np.linspace(0, total - 1, min(sample, total))))
-        durations: list[float] = []
+        # 总时长必须先收全：被跳过的帧也会占据播放时间，只统计保留帧会
+        # 把 2.99s 的动画压成 0.79s（节奏快了 3.8 倍）。先遍历全部帧累计
+        # 时长，再按保留帧数均摊——循环总时长 = 原动图时长。
+        frame_times: list[float] = []
+        for index in range(total):
+            handle.seek(index)
+            frame_times.append(_frame_duration(handle))
+        total_time = sum(frame_times)
         original_size: tuple[int, int] = handle.size
         frames: list[np.ndarray] = []
         for index in chosen:
             handle.seek(index)
-            durations.append(_frame_duration(handle))
             arr, _ = _to_reference(handle, matte, max_width)
             frames.append(_denoise(arr))
-    avg = sum(durations) / len(durations) if durations else 0.125
-    if avg <= 0:
-        avg = 0.125
+    kept = len(frames)
+    avg = total_time / kept if kept and total_time > 0 else 0.125
     return frames, original_size, avg, total
 
 

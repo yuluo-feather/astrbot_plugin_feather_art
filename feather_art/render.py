@@ -28,7 +28,7 @@ from .geometry import (
     polygon_css,
 )
 from .merge import label_components
-from .paint import paint_for_region
+from .paint import Gradient, Solid, paint_for_region
 from .quantize import quantize
 from .score import Rasterizer
 
@@ -100,12 +100,13 @@ class ContourRenderer:
         # 两位小数已把误差压到 尺寸/10000 px，只有极大的形状才配第三位
         digits = max(2, math.ceil(math.log10(max(size) / 10)))
         clip = polygon_css(points, origin, size, digits)
+        css = paint.to_css()
         cls = "shape"
         background = ""
-        if paint.startswith("#"):
-            cls = f"shape {self.solid_class(paint)}"
+        if css.startswith("#"):
+            cls = f"shape {self.solid_class(css)}"
         else:
-            background = f"background:{paint};"
+            background = f"background:{css};"
         style = (
             f"left:{number(origin[0] / self.width * 100, 3)}%;"
             f"top:{number(origin[1] / self.height * 100, 3)}%;"
@@ -137,10 +138,10 @@ class ContourRenderer:
                 area = int(areas[component])
                 mask = (ids[y:y + height, x:x + width] == component).astype(np.uint8)
                 if area >= 24:
-                    paint, gradient = paint_for_region(
+                    paint = paint_for_region(
                         self.reference, mask, x, y, width, height, self.gradients)
                 else:
-                    paint, gradient = hex_color(rgb), False
+                    paint = Solid(rgb)
                 for rings in component_rings(mask, x, y, area, self.epsilon):
                     self.stats["interior_holes"] += len(rings) - 1
                     if area < 24:
@@ -150,9 +151,9 @@ class ContourRenderer:
                         shape = self.shape(rings, paint)
                         if shape:
                             parts.append(shape)
-                            self.stats["gradient_fills"] += int(gradient)
+                            self.stats["gradient_fills"] += int(isinstance(paint, Gradient))
             for rings in small_groups.values():
-                shape = self.shape(rings, hex_color(rgb))
+                shape = self.shape(rings, Solid(rgb))
                 if shape:
                     parts.append(shape)
             if position % 32 == 0:
@@ -189,7 +190,7 @@ class ContourRenderer:
                     f'<div class="shape" style="top:0;left:0;right:0;bottom:0;background:{hex_color(rgb)};clip-path:{polygon}"></div>'))
                 if self.raster is not None:
                     full = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_NEAREST)
-                    self.raster.fill_mask(full > 0, 0, 0, hex_color(rgb))
+                    self.raster.fill_mask(full > 0, 0, 0, Solid(rgb))
                 self.stats["polygon_vertices"] += vertices
                 self.stats["shapes"] += 1
                 self.stats["underpainting_shapes"] += 1

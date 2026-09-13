@@ -140,8 +140,9 @@ def test_vertical_gradient_angle():
     for yy in range(40):
         ref[yy, :, :] = yy * 6
     mask = np.ones((40, 40), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 40, 40, True)
-    assert is_grad and paint_str.startswith("linear-gradient(180deg,")
+    result = paint.paint_for_region(ref, mask, 0, 0, 40, 40, True)
+    assert isinstance(result, paint.Gradient)
+    assert result.to_css().startswith("linear-gradient(180deg,")
 
 
 def test_horizontal_gradient_angle():
@@ -149,25 +150,28 @@ def test_horizontal_gradient_angle():
     for xx in range(40):
         ref[:, xx, :] = xx * 6
     mask = np.ones((40, 40), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 40, 40, True)
+    result = paint.paint_for_region(ref, mask, 0, 0, 40, 40, True)
     # 左暗右亮 → 90deg（终点在右）；解析特征向量符号自定，与旧 SVD 的
     # 270deg（终点在左、端点色互换）是同一渐变，视觉等价。
-    assert is_grad and paint_str.startswith("linear-gradient(90deg,")
+    assert isinstance(result, paint.Gradient)
+    assert result.to_css().startswith("linear-gradient(90deg,")
 
 
 def test_tiny_region_solid():
     ref = np.zeros((10, 10, 3), np.uint8)
     ref[:, :, 0] = 100
     mask = np.ones((10, 10), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 10, 10, True)
-    assert not is_grad and paint_str == "#640000"  # 只有 R=100 → (100,0,0)
+    result = paint.paint_for_region(ref, mask, 0, 0, 10, 10, True)
+    assert isinstance(result, paint.Solid)
+    assert result.to_css() == "#640000"  # 只有 R=100 → (100,0,0)
 
 
 def test_flat_region_solid():
     ref = np.full((30, 30, 3), 90, np.uint8)
     mask = np.ones((30, 30), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 30, 30, True)
-    assert not is_grad
+    result = paint.paint_for_region(ref, mask, 0, 0, 30, 30, True)
+    assert isinstance(result, paint.Solid)
+    assert result.to_css() == "#5a5a5a"
 
 
 def test_min_ramp_returns_solid():
@@ -175,8 +179,9 @@ def test_min_ramp_returns_solid():
     for yy in range(30):
         ref[yy, :, :] = yy // 30  # 通道差仅 1，远小于渐变阈值 3
     mask = np.ones((30, 30), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 30, 30, True)
-    assert not is_grad and paint_str.startswith("#")
+    result = paint.paint_for_region(ref, mask, 0, 0, 30, 30, True)
+    assert isinstance(result, paint.Solid)
+    assert result.to_css().startswith("#")
 
 
 def test_gradients_disabled_solid():
@@ -184,8 +189,9 @@ def test_gradients_disabled_solid():
     for yy in range(40):
         ref[yy, :, :] = yy * 6
     mask = np.ones((40, 40), bool)
-    paint_str, is_grad = paint.paint_for_region(ref, mask, 0, 0, 40, 40, False)
-    assert not is_grad and paint_str.startswith("#")
+    result = paint.paint_for_region(ref, mask, 0, 0, 40, 40, False)
+    assert isinstance(result, paint.Solid)
+    assert result.to_css().startswith("#")
 
 
 # ---------- imaging ----------

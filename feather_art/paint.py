@@ -1,4 +1,8 @@
-"""区域涂色：纯色或一阶局部渐变（linear-gradient 两停点）。
+"""区域涂色：纯色或一阶局部渐变（两停点线性渐变）。
+
+产出结构化涂色而不是字符串：Solid 与 Gradient 各自知道怎么写进 CSS
+（to_css），将来别的方言也照这个接口加写法。拟合的数学只管算，
+不管写成哪家的字——渲染器换方言时不必重算一遍最小二乘。
 
 较大的色块（>= 45 像素且短边 >= 5）在参考图里往往藏着平滑的明暗过渡，
 用单色会比原图生硬。这里对区域样本做最小二乘平面拟合：
@@ -10,6 +14,7 @@
 """
 
 import math
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -21,17 +26,44 @@ MAX_SAMPLES = 6000     # 回归样本上限（超采样）
 MIN_RAMP = 3.0         # 渐变幅度阈值（单通道最大差）
 
 
+@dataclass(frozen=True, eq=False)
+class Solid:
+    """纯色涂色；rgb 为 0-255 浮点三元组。
+
+    eq=False：带 ndarray 的 dataclass 用默认逐元素比较会在断言里炸出
+    「truth value of an array is ambiguous」，涂色只按同一性比较。
+    """
+
+    rgb: np.ndarray
+
+    def to_css(self) -> str:
+        return hex_color(self.rgb)
+
+
+@dataclass(frozen=True, eq=False)
+class Gradient:
+    """两停点线性渐变；角度沿用 CSS 定义（0deg = 向上，顺时针为正）。"""
+
+    angle: float
+    start: np.ndarray
+    end: np.ndarray
+
+    def to_css(self) -> str:
+        return (f"linear-gradient({number(self.angle, 1)}deg,"
+                f"{hex_color(self.start)},{hex_color(self.end)})")
+
+
 def paint_for_region(reference, mask, x, y, width, height, gradients: bool):
-    """区域 → (CSS 涂色, 是否渐变)。
+    """区域 → 涂色（Solid 或 Gradient）。
 
     reference: 已合成的参考图（HxWx3 uint8）；mask: 区域内布尔掩码；
     x/y/width/height: 区域在参考图中的位置与尺寸。
     """
     ys, xs = np.nonzero(mask)
     samples = reference[y + ys, x + xs].astype(float)
-    solid = hex_color(samples.mean(axis=0))
+    solid = Solid(samples.mean(axis=0))
     if not gradients or len(xs) < MIN_SAMPLES or min(width, height) < MIN_SIDE:
-        return solid, False
+        return solid
     if len(xs) > MAX_SAMPLES:
         step = math.ceil(len(xs) / MAX_SAMPLES)
         xs, ys, samples = xs[::step], ys[::step], samples[::step]
@@ -63,6 +95,6 @@ def paint_for_region(reference, mask, x, y, width, height, gradients: bool):
     start = np.clip(coeff[2] - slope * length / 2, low, high)
     end = np.clip(coeff[2] + slope * length / 2, low, high)
     if np.max(np.abs(end - start)) < MIN_RAMP:
-        return solid, False
+        return solid
     angle = math.degrees(math.atan2(direction[0], -direction[1])) % 360
-    return f"linear-gradient({number(angle, 1)}deg,{hex_color(start)},{hex_color(end)})", True
+    return Gradient(angle, start, end)

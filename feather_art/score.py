@@ -2,32 +2,34 @@
 
 量的是「逼近程度」本身，不是浏览器抗锯齿——所以它只能当作者阶段
 的参考，登不了台面替我们亲眼验收。只在调用方要（score=True）时算。
+
+涂色按结构化对象读，不解析 CSS 字符串；但取色一律走 hex_color、角度走
+number——读的就是文档里真正写出去的那几个数，栅格化才和成品对得上
+（直接拿未取整的浮点色会算出另一套 MAE）。
 """
 
 import math
-import re
 
 import cv2
 import numpy as np
 
-# 我们方言里的渐变只有这一种形态：两停点、无空格
-GRADIENT = re.compile(r"linear-gradient\(([-\d.]+)deg,(#[0-9a-f]{6}),(#[0-9a-f]{6})\)")
+from .geometry import hex_color, number
+from .paint import Gradient
 
 
-def rgb_of(hex_color: str) -> np.ndarray:
-    return np.array([int(hex_color[index:index + 2], 16) for index in (1, 3, 5)], np.float32)
+def rgb_of(hex_code: str) -> np.ndarray:
+    """#rrggbb → 0-255 浮点三元组。"""
+    return np.array([int(hex_code[index:index + 2], 16) for index in (1, 3, 5)], np.float32)
 
 
-def paint_layer(paint: str, width: int, height: int) -> "np.ndarray | None":
-    """把一种 CSS 涂色渲染成 HxWx3 浮点层；无法解析返回 None。"""
+def paint_layer(paint, width: int, height: int) -> np.ndarray:
+    """把一种涂色渲染成 HxWx3 浮点层。"""
     layer = np.empty((height, width, 3), np.float32)
-    if paint.startswith("#"):
-        layer[:] = rgb_of(paint)
+    if not isinstance(paint, Gradient):
+        layer[:] = rgb_of(hex_color(paint.rgb))
         return layer
-    match = GRADIENT.fullmatch(paint)
-    if match is None:
-        return None
-    angle, start, end = float(match.group(1)), rgb_of(match.group(2)), rgb_of(match.group(3))
+    angle = float(number(paint.angle, 1))
+    start, end = rgb_of(hex_color(paint.start)), rgb_of(hex_color(paint.end))
     radians = math.radians(angle)
     # CSS 角度从「上」起顺时针：图像坐标 (x 右, y 下) 里的方向是 (sin, -cos)
     direction = np.array([math.sin(radians), -math.cos(radians)])
@@ -49,9 +51,8 @@ class Rasterizer:
         """整幅布尔掩码直接涂色。"""
         height, width = mask.shape
         layer = paint_layer(paint, width, height)
-        if layer is not None:
-            region = self.composite[y:y + height, x:x + width]
-            region[mask] = layer[mask]
+        region = self.composite[y:y + height, x:x + width]
+        region[mask] = layer[mask]
 
     def fill_rings(self, points, origin, size, paint):
         """偶奇环（画布空间 float 点集）涂色：先栅格化环内掩码再上色。"""
@@ -65,9 +66,8 @@ class Rasterizer:
         mask = np.zeros((y1 - y0, x1 - x0), np.uint8)
         cv2.fillPoly(mask, [np.round(local).astype(np.int32)], 1)
         layer = paint_layer(paint, x1 - x0, y1 - y0)
-        if layer is not None:
-            region = self.composite[y0:y1, x0:x1]
-            region[mask > 0] = layer[mask > 0]
+        region = self.composite[y0:y1, x0:x1]
+        region[mask > 0] = layer[mask > 0]
 
     def errors(self, reference):
         """全尺寸 MAE + 64px 缩略图 MAE（0-255，越低越贴近）。"""

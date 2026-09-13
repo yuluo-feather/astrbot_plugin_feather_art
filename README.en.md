@@ -211,6 +211,13 @@ tests/                # pytest suite (grows with development)
 
 ## 📜 Changelog
 
+#### v0.3.0
+
+- New: optional inline-SVG dialect — set `render_backend` to `svg` and the same image is traced into a single-file inline SVG at about half the size; the default stays pure CSS
+- New: readable delivery filenames — `羽画_工笔_0908-2214.html` tells you at a glance which run it is
+- Fix: v0.2.2 reported missing dependencies at every entry point and errored out on animation sampling — fixed here
+- Fix: the offline similarity score is no longer inflated
+
 #### v0.2.2
 
 - New: adjustable animation sampling density — `--sample N` (8–96 frames) fixes how many frames are sampled, for smoothness or smaller output; the config key `motion_sample` can set a default

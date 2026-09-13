@@ -2,6 +2,30 @@
 
 > 每个版本条目均为中文在前、英文在后。
 
+#### v0.3.0
+
+##### ✨ 新功能
+
+- **可选的内联 SVG 方言**：配置项 `render_backend` 可选 `svg`——同一张图描成内联 SVG 单文件，体积约为纯 CSS 插画的一半（同一份几何实测）；Chromium / Firefox / WebKit 三个内核里逐位一致。默认仍是纯 CSS 插画，一个字节都没动
+- **交付文件名可读化**：`羽画_工笔_feather_1788695429_a1b502bc.html` 变成 `羽画_工笔_0908-2214.html`，只留哪天哪一分钟
+
+##### 🐛 修复
+
+- **修复 v0.2.2 装不上**：那一版的包内容有缺漏，装上后**所有入口**都误报「缺少依赖」，动图指定采样帧数还会直接报错。本版补齐
+- **离线相似度评分修正**：报出的 MAE 不再虚报，回到可信区间
+
+**English**
+
+##### ✨ New features
+
+- **Optional inline-SVG dialect**: the `render_backend` config key accepts `svg` — the same image is traced into a single-file inline SVG at roughly half the size of the pure-CSS artwork (measured on identical geometry), pixel-identical across Chromium / Firefox / WebKit. The default stays pure CSS, unchanged
+- **Readable delivery filenames**: `羽画_工笔_feather_1788695429_a1b502bc.html` becomes `羽画_工笔_0908-2214.html` — day and minute, nothing else
+
+##### 🐛 Fixes
+
+- **v0.2.2 could not be installed**: that release was missing pieces, so every entry point wrongly reported missing dependencies and animations with a fixed sampling count errored out. Fixed here
+- **Offline similarity score corrected**: the reported MAE is no longer inflated
+
 #### v0.2.2
 
 ##### ✨ 新功能

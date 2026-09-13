@@ -117,13 +117,13 @@ def test_component_rings_circle():
     assert len(rings[0][0]) >= 3
 
 
-def test_mask_polygon_output():
+def test_mask_rings_output():
     import cv2
     mask = np.zeros((30, 30), np.uint8)
     cv2.circle(mask, (15, 15), 10, 1, -1)
-    clip, vertices = geometry.mask_polygon(mask, 0.5, 8)
-    assert clip is not None and clip.startswith("polygon(")
-    assert vertices >= 3
+    rings = geometry.mask_rings(mask, 0.5, 8)
+    assert len(rings) == 1 and len(rings[0]) >= 8
+    assert geometry.mask_rings(np.zeros((30, 30), np.uint8), 0.5, 8) == []
 
 
 def test_bridge_rings_keeps_order():
@@ -274,13 +274,12 @@ def test_bridged_polygon_fills_ring_under_nonzero():
     assert filled.sum() > 600           # 圆环量级，不是被填死的实心圆
 
 
-def test_mask_polygon_hole_nonzero():
-    """底板剪影：含孔洞时也输出纯 polygon，且外环/洞方向相反。"""
+def test_mask_rings_hole_orientation():
+    """底板剪影：含孔洞时给出外环 + 洞环，且两者方向相反——nonzero 挖孔的前提。"""
     import cv2
     mask = np.zeros((40, 40), np.uint8)
     cv2.circle(mask, (20, 20), 15, 1, -1)
     cv2.circle(mask, (20, 20), 6, 0, -1)
-    clip, vertices = geometry.mask_polygon(mask, 0.5, 8)
-    assert clip is not None and clip.startswith("polygon(")
-    assert "evenodd" not in clip
-    assert vertices >= 6  # 外环 + 洞环至少各 3 点
+    rings = geometry.mask_rings(mask, 0.5, 8)
+    assert len(rings) == 2
+    assert geometry._signed_area(rings[0]) * geometry._signed_area(rings[1]) < 0

@@ -47,7 +47,7 @@ def bridge_rings(rings: list[np.ndarray]) -> np.ndarray:
 
     桥的路径是「环起点 → 环上每点 → 回到环起点 → 回锚点」的重描，
     面积严格为零，绕数填充里去回两条桥的贡献互相抵消。
-    调用方须保证洞环方向与外环相反（见 component_rings / mask_polygon）。
+    调用方须保证洞环方向与外环相反（见 component_rings / mask_rings）。
     """
     points = list(rings[0])
     if len(rings) > 1:
@@ -119,17 +119,19 @@ def component_rings(mask: np.ndarray, x: int, y: int, area: int, epsilon: float)
         yield rings
 
 
-def mask_polygon(mask: np.ndarray, epsilon: float, min_area: float):
-    """整幅掩码 → (polygon CSS, 顶点数)。孔洞走方向归一化 + nonzero 填充。
+def mask_rings(mask: np.ndarray, epsilon: float, min_area: float) -> list:
+    """整幅掩码 → 环集合（画布坐标 float）；没有有效外环时返回空列表。
 
     用 RETR_CCOMP 拿父子关系（RETR_LIST 无层级，桥接顺序会乱套）；
-    洞环方向翻到与外环相反——旧内核不认 evenodd 也能正确挖孔。
-    与 component_rings 的用途不同：这里处理的是「底板剪影」这类大而整的
-    掩码（含孔洞），输出直接是 CSS 片段。
+    洞环方向翻到与外环相反——配合 nonzero 绕数填充照样挖孔，老内核不认
+    fill-rule 参数也不受影响（见 polygon_css）。
+
+    底板剪影、整幅掩码这种「大而整」的输入走这里；单个组件的环走
+    component_rings（它按面积选膨胀核，并逐个 yield 出多环）。
     """
     contours, hierarchy = cv2.findContours(np.pad(mask, 1), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     if hierarchy is None:
-        return None, 0
+        return []
     outer_rings, hole_rings = [], []
     for index, contour in enumerate(contours):
         if abs(cv2.contourArea(contour)) < min_area:
@@ -141,10 +143,9 @@ def mask_polygon(mask: np.ndarray, epsilon: float, min_area: float):
             else:
                 hole_rings.append(points)
     if not outer_rings:
-        return None, 0
+        return []
     rings = list(outer_rings)
     outer_sign = _signed_area(outer_rings[0])
     for hole in hole_rings:
         rings.append(_flip_ring(hole) if _signed_area(hole) * outer_sign > 0 else hole)
-    points = bridge_rings(rings)
-    return polygon_css(points, np.zeros(2), np.array(mask.shape[::-1]), 4), len(points)
+    return rings

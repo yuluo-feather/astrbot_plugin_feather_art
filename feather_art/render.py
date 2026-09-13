@@ -8,7 +8,8 @@
 终检抛出 BudgetExceeded（携带真实完整字节数），给上层的 fit 跳档精确信号。
 """
 
-from .backends import DocumentConfig, get_backend
+from .backends import get_backend
+from .contract import DocumentConfig
 from .regions import build_illustration
 from .score import Rasterizer
 
@@ -21,10 +22,12 @@ def render_document(reference, labels, palette, original_size, *, background, ti
     illustration = build_illustration(
         reference, labels, palette, background=background, epsilon=epsilon,
         gradients=gradients, underpainting=underpainting, progress=progress, raster=raster)
-    document, stats = get_backend(backend).render_static(
+    backend_impl = get_backend(backend)
+    document, stats = backend_impl.render_static(
         illustration, DocumentConfig(title=title, original_size=tuple(original_size),
                                      max_bytes=max_bytes))
-    stats = {**illustration.stats, **stats}
+    # 方言名取自真正出文档的那个后端，而不是配置里那串字——配置会漂，事实不会
+    stats = {**illustration.stats, **stats, "backend": backend_impl.name}
     if raster is not None:
         detail, thumbnail = raster.errors(reference)
         stats["similarity"] = {"mae": detail, "mae_thumbnail": thumbnail}

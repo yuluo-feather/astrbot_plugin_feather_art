@@ -4,36 +4,22 @@
 全在 Illustration 里，后端不许动——它只决定「写成什么字」：摆位、精度、
 去重、模板，以及超出体积预算时抛 BudgetExceeded。
 
-当前只挂 CSS 一个后端（那是产品身份，不是技术限制）。接口按协议写，是为了
-让第二种方言接上来时不必回头改上游——但也别指望接口能替你做决定：
+当前挂 CSS（产品身份，也是默认出口）与 SVG（实验分支）两个后端。接口按协议写，
+是为了让第二种方言接上来时不必回头改上游——但也别指望接口能替你做决定：
 成品一律走 .html 外壳（独立 .svg 在聊天里是文件不是预览，且没有 meta CSP），
 所以这里没有「文件后缀」这种成员。
 """
 
 import html
 import math
-from dataclasses import dataclass
 from typing import Protocol
 
-from .contract import FALLSAFE_MESSAGE, BudgetExceeded
+from .contract import FALLSAFE_MESSAGE, BudgetExceeded, DocumentConfig
 from .geometry import bridge_rings, hex_color, number, polygon_css
 from .paint import Gradient
 
 # 底板多边形的小数位（前景按包围盒尺寸算，见 CssShapeWriter.shape）
 FOUNDATION_DIGITS = 4
-
-
-@dataclass(frozen=True)
-class DocumentConfig:
-    """出文档所需的这点参数（几何不在这里，在 Illustration 里）。
-
-    original_size: 原图尺寸——只用来算容器长宽比（描摹尺寸可能被压过）；
-    max_bytes: 体积上限，超了抛 BudgetExceeded。
-    """
-
-    title: str
-    original_size: tuple
-    max_bytes: int
 
 
 class RenderBackend(Protocol):

@@ -14,13 +14,14 @@
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass
 from typing import Callable
 
 import cv2
 import numpy as np
 
-from .contract import FALLSAFE_MESSAGE
+from .contract import FALLSAFE_MESSAGE, BudgetExceeded
 from .geometry import hex_color
 
 DENOISE_KERNEL = 3   # 去抖动中值滤波核
@@ -39,6 +40,7 @@ class ScanlineConfig:
     background: "str | tuple" = "#ffffff"   # "#hex" 或 (r, g, b) 三元组
     duration: float = 1.0      # 单轮循环总时长（秒）
     loop: bool = True
+    max_bytes: int = 32 * 1024 * 1024   # 体积上限，超了抛 BudgetExceeded
     progress: Callable | None = None
 
 
@@ -77,8 +79,13 @@ def seg_gradient(segs: list, width: int) -> str:
 
 
 def merge_rows(frame: np.ndarray, row_h: int) -> np.ndarray:
-    """纵向 ROW_PX 像素均值合成一行（行数 = h // ROW_PX）。"""
-    hh = frame.shape[0] // row_h
+    """纵向 ROW_PX 像素均值合成一行（行数 = max(1, h // ROW_PX)）。
+
+    不足一行也要留一行：h < row_h 时 h // row_h 是 0，而 render_scanline
+    那边用的是 max(1, ...)——两处口径必须一致，否则 1 像素高的帧会在取值时
+    越界。宽扁动图（横幅、取景条）降采样后就会落到这一档，不是理论边界。
+    """
+    hh = max(1, frame.shape[0] // row_h)
     out = np.zeros((hh, frame.shape[1], 3), np.uint8)
     for i in range(hh):
         out[i] = frame[i * row_h:(i + 1) * row_h].astype(np.int16) \
@@ -154,6 +161,7 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         if idx and idx % 10 == 0:
             progress("行 %d/%d（动态 %d）" % (idx, hh, len(changed)))
 
+    label = html.escape(config.title, quote=True)
     document = (
         '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -162,12 +170,18 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         "'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; "
         "connect-src 'none'; font-src 'none'; object-src 'none'; base-uri "
         "'none'; form-action 'none'\">"
-        '<title>' + config.title + '</title><style>'
+        '<title>' + label + '</title><style>'
         + chr(10).join(css) + "</style></head><body>"
         '<main class="illustration" role="img" aria-label="'
-        + config.title + '"><div class="fallsafe"></div>'
+        + label + '"><div class="fallsafe"></div>'
         + chr(10).join(body) + "</main></body></html>"
     )
+    size_bytes = len(document.encode("utf-8"))
+    if size_bytes > config.max_bytes:
+        # 预算纪律与静态线一致：拼完再终检，抛出的字节数是真实完整值。
+        # 扫描线一行一渐变，长动图的体积能到几十上百 MiB——缺这条终检时
+        # max_mb 对它完全无效，超限成品会照样发出去。
+        raise BudgetExceeded(size_bytes)
     stats = {
         "style": "scanline",
         "rows": hh,
@@ -176,6 +190,6 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         "frames": frame_count,
         "duration": round(config.duration, 2),
         "keyframe_total": keyframe_total,
-        "bytes": len(document.encode("utf-8")),
+        "bytes": size_bytes,
     }
     return document, stats

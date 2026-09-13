@@ -11,10 +11,12 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from data.plugins.astrbot_plugin_feather_art import hardening  # noqa: E402
 from data.plugins.astrbot_plugin_feather_art import service_animation as service  # noqa: E402
 from data.plugins.astrbot_plugin_feather_art.feather_art.audit import audit_html  # noqa: E402
+from data.plugins.astrbot_plugin_feather_art.feather_art.contract import BudgetExceeded  # noqa: E402
 from data.plugins.astrbot_plugin_feather_art.feather_art.scanline import (  # noqa: E402
-    OVERLAP_PCT, ScanlineConfig, render_scanline)
+    OVERLAP_PCT, ROW_PX, ScanlineConfig, merge_rows, render_scanline)
 
 
 def _gif(n=4, size=(16, 16), duration=120):
@@ -88,3 +90,68 @@ def test_trace_animation_vector_style(tmp_path):
         style="vector", force=True)
     assert rep["audit"]["valid"], rep["audit"]["errors"]
     assert rep["animation"]["style"] == "vector"
+
+
+def test_row_count_agrees_between_merge_and_render():
+    """两处行数口径必须同源。
+
+    merge_rows 纯整除、render_scanline 用 max(1, ...) 时，h 小于 ROW_PX 就会
+    一边给 0 行、一边给 1 行，取值当场越界。宽扁动图降采样后高度落到 1 像素
+    （实测 1200x3 的 GIF 就中）是确定性崩溃，不是理论边界。
+    """
+    for height in range(1, 10):
+        frames = [np.zeros((height, 6, 3), np.uint8) for _ in range(2)]
+        merged = merge_rows(frames[0], ROW_PX)
+        doc, stats = render_scanline(frames, ScanlineConfig(duration=0.2))
+        assert stats["rows"] == merged.shape[0] == max(1, height // ROW_PX)
+        assert audit_html(doc)["valid"]
+
+
+def test_scanline_enforces_byte_budget():
+    """超预算抛 BudgetExceeded 且带真实字节数；恰好等于上限必须放行。"""
+    frames = _frames(3, size=(48, 24))
+    _, stats = render_scanline(frames, ScanlineConfig(duration=0.2))
+    size = stats["bytes"]
+    with pytest.raises(BudgetExceeded) as excinfo:
+        render_scanline(frames, ScanlineConfig(duration=0.2, max_bytes=size - 1))
+    assert excinfo.value.byte_count == size          # 真实完整字节数，不是估算值
+    _, ok = render_scanline(frames, ScanlineConfig(duration=0.2, max_bytes=size))
+    assert ok["bytes"] == size                       # 边界：等于上限不算超
+
+
+def test_trace_animation_scanline_respects_max_mb(tmp_path):
+    """默认档（scanline）也必须受 max_mb 约束，报人话、且不落盘。
+
+    锁的是「预算真的接在默认路径上」——预算只挂在 vector 分支时 max_mb 对
+    默认的 scanline 形同不存在，超限成品会照发出去。
+    """
+    out = tmp_path / "huge.html"
+    with pytest.raises(service.TraceError) as excinfo:
+        service.trace_animation(
+            _gif(n=4, size=(64, 64)), "motion", out,
+            config=service.TraceConfig(max_mb=0.0005, progress=lambda _: None),
+            force=True)
+    assert "体积" in str(excinfo.value)
+    assert hardening.user_fault(excinfo.value) is not None   # 会被当用户文案透出
+    assert not out.exists()                                  # 超预算不许落盘
+
+
+def test_trace_animation_vector_respects_max_mb(tmp_path):
+    """矢量线同样转成用户文案，不漏内部异常原文，也不落盘。"""
+    out = tmp_path / "vec.html"
+    with pytest.raises(service.TraceError) as excinfo:
+        service.trace_animation(
+            _gif(n=4, size=(64, 64)), "motion", out,
+            config=service.TraceConfig(max_mb=0.0005, progress=lambda _: None),
+            style="vector", force=True)
+    assert hardening.user_fault(excinfo.value) is not None
+    assert not out.exists()
+
+
+def test_scanline_title_is_escaped():
+    """标题进 <title> 与 aria-label 两处都要转义（口径见 contract.DocumentConfig）。"""
+    doc, _ = render_scanline(_frames(2), ScanlineConfig(title='a<b>&"c'))
+    assert 'a&lt;b&gt;&amp;&quot;c' in doc
+    assert "<title>a<b>" not in doc and 'aria-label="a<b' not in doc
+    assert doc.count("&lt;b&gt;") == 2               # title 与 aria-label 各一处
+    assert audit_html(doc)["valid"]

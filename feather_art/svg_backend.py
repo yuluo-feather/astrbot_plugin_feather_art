@@ -28,6 +28,7 @@ d 属性 536045 → 355195 B（-33.7%），整份文档 786241 → 605391 B（�
 meta CSP；内联进 HTML 一样都不丢。老内核不用兜底提示——svg 它本来就认。
 """
 
+import html
 import math
 from itertools import groupby
 
@@ -171,6 +172,8 @@ class SvgBackend:
         defs = gradients.defs() + clip_attributes
         width, height = config.original_size
         sizer = number(height / width * 100.0, 5)
+        # 标题在成品里出现两处，两处都要转义（口径见 contract.DocumentConfig）
+        label = html.escape(config.title, quote=True)
         document = f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -178,7 +181,7 @@ class SvgBackend:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <meta http-equiv="Content-Security-Policy" content="{CSP}">
-<title>{config.title}</title>
+<title>{label}</title>
 <style>
 *{{box-sizing:border-box}}
 html,body{{margin:0;min-height:100%;background:{hex_color(illustration.background)};color-scheme:light}}
@@ -190,7 +193,7 @@ html,body{{margin:0;min-height:100%;background:{hex_color(illustration.backgroun
 </style>
 </head>
 <body>
-<main class="illustration" role="img" aria-label="{config.title}">
+<main class="illustration" role="img" aria-label="{label}">
 <svg viewBox="0 0 {illustration.width} {illustration.height}">
 <defs>{defs}</defs>
 {foundation}

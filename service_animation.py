@@ -17,6 +17,7 @@ from pathlib import Path
 from .feather_art import __version__
 from .feather_art.animate import extract_shapes, track_shapes
 from .feather_art.audit import audit_html
+from .feather_art.contract import BudgetExceeded
 from .feather_art.imaging import decode_frames
 from .feather_art.merge import merge_regions
 from .feather_art.presets import resolve
@@ -56,39 +57,49 @@ def trace_animation(image_bytes: bytes, preset_key: str, out_path: Path,
     size = (frames[0].shape[1], frames[0].shape[0])
     traced.progress(f"采样 {len(frames)} 帧 · {preset.name}档")
 
-    if style == "scanline" and not tween:
-        # 扫描线：逐像素行渐变，覆盖 100%、任意缩放无缝；tween 只有矢量轨迹
-        # 才有意义——要求补间时自动落回 vector。
-        traced.progress(f"扫描线渲染 {len(frames)} 帧")
-        document, stats = render_scanline(
-            frames,
-            ScanlineConfig(title="羽画 · 纯 CSS 动画（扫描线）",
-                           background=traced.background,
-                           duration=len(frames) * avg_duration if avg_duration > 0 else 1.0,
-                           progress=traced.progress))
-        shapes_total = 0
-    else:
-        max_bytes = int(traced.max_mb * 1024 * 1024)
-        seq: list[list] = []
-        for index, ref in enumerate(frames):
-            labels, palette = quantize(ref, preset.colors)
-            labels = merge_regions(labels, palette, preset.passes, traced.progress)
-            seq.append(extract_shapes(labels, palette, ref, index, preset.epsilon,
-                                      min_area=max(8, preset.max_width // 64)))
-            traced.progress(f"帧 {index + 1}/{len(frames)}: {len(seq[-1])} 个实例")
+    # 体积上限对两条渲染线一视同仁：扫描线一行一渐变，体积天生比矢量线大，
+    # 而它偏偏是默认档。预算只挂在 vector 分支上时，max_mb 对默认路径形同不存在。
+    max_bytes = int(traced.max_mb * 1024 * 1024)
+    try:
+        if style == "scanline" and not tween:
+            # 扫描线：逐像素行渐变，覆盖 100%、任意缩放无缝；tween 只有矢量轨迹
+            # 才有意义——要求补间时自动落回 vector。
+            traced.progress(f"扫描线渲染 {len(frames)} 帧")
+            document, stats = render_scanline(
+                frames,
+                ScanlineConfig(title="羽画 · 纯 CSS 动画（扫描线）",
+                               background=traced.background,
+                               duration=len(frames) * avg_duration if avg_duration > 0 else 1.0,
+                               max_bytes=max_bytes,
+                               progress=traced.progress))
+            shapes_total = 0
+        else:
+            seq: list[list] = []
+            for index, ref in enumerate(frames):
+                labels, palette = quantize(ref, preset.colors)
+                labels = merge_regions(labels, palette, preset.passes, traced.progress)
+                seq.append(extract_shapes(labels, palette, ref, index, preset.epsilon,
+                                          min_area=max(8, preset.max_width // 64)))
+                traced.progress(f"帧 {index + 1}/{len(frames)}: {len(seq[-1])} 个实例")
 
-        tracks = [t for t in track_shapes(seq, size) if len(t.keys) >= 2]
-        # 短轨迹过滤：闪现 1-2 帧的碎片是「诡异闪烁」的主源（90 秒长片会产生
-        # 上千条碎片轨迹互相叠着跳），只保留 >=2 帧的稳定轨迹。
-        traced.progress(f"图层跟踪: {len(tracks)} 条轨迹（过滤闪现碎片）")
+            tracks = [t for t in track_shapes(seq, size) if len(t.keys) >= 2]
+            # 短轨迹过滤：闪现 1-2 帧的碎片是「诡异闪烁」的主源（90 秒长片会产生
+            # 上千条碎片轨迹互相叠着跳），只保留 >=2 帧的稳定轨迹。
+            traced.progress(f"图层跟踪: {len(tracks)} 条轨迹（过滤闪现碎片）")
 
-        document, stats = render_animation(
-            tracks, size, len(frames),
-            AnimationConfig(title="羽画 · 纯 CSS 动画", background=traced.background,
-                            fps=1.0 / avg_duration if avg_duration > 0 else 8.0,
-                            tween=tween, max_bytes=max_bytes,
-                            progress=traced.progress))
-        shapes_total = sum(len(x) for x in seq)
+            document, stats = render_animation(
+                tracks, size, len(frames),
+                AnimationConfig(title="羽画 · 纯 CSS 动画", background=traced.background,
+                                fps=1.0 / avg_duration if avg_duration > 0 else 8.0,
+                                tween=tween, max_bytes=max_bytes,
+                                progress=traced.progress))
+            shapes_total = sum(len(x) for x in seq)
+    except BudgetExceeded as exceeded:
+        # 动画线没有 fit 阶梯可退，超预算只能明说。文案首字符是中文，会被当
+        # 用户可见文案透出，而不是掉进「机器手抖」的兜底。
+        raise TraceError(
+            f"动图描出来超过体积上限了（{traced.max_mb:g} MiB）："
+            "剪短一点，或把采样帧数调小再来。") from exceeded
     audit = audit_html(document)
     if not audit["valid"]:
         raise TraceError("生成的 HTML 未通过契约审计：" + "、".join(audit["errors"][:3]))

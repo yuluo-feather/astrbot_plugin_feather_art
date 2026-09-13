@@ -145,3 +145,23 @@ def test_template_old_webview_compatible():
     # 兼容改动不能破坏审计（元素/属性/CSP 全在合同内）
     result = audit.audit_html(doc)
     assert result["valid"], result["errors"]
+
+
+def test_title_escaped_in_both_static_backends():
+    """标题进 <title> 与 aria-label 两处，两个后端口径一致地转义。
+
+    挡的是「一个后端转了、另一个没转」那种静默分家：默认标题里没有特殊字符，
+    分家不会报错，只会在哪天标题接上外部输入时变成一个注入点。
+    """
+    reference, labels, palette = _small_art()
+    for backend in ("css", "svg"):
+        doc, _ = render.render_document(
+            reference, labels, palette, (8, 8), background=(255, 255, 255),
+            title='a<b>&"c', epsilon=0.5, gradients=False, underpainting=False,
+            max_bytes=10_000_000, progress=lambda _: None, backend=backend)
+        assert 'a&lt;b&gt;&amp;&quot;c' in doc, backend
+        assert "<title>a<b>" not in doc, backend
+        assert 'aria-label="a<b' not in doc, backend
+        assert doc.count("&lt;b&gt;") == 2, backend      # title 与 aria-label 各一处
+        result = audit.audit_html(doc, backend)
+        assert result["valid"], result["errors"]

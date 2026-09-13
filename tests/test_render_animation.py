@@ -1,4 +1,6 @@
 """render_animation：图层 → @keyframes HTML；审计对动画的校验。"""
+import re
+
 import numpy as np
 import pytest
 
@@ -42,18 +44,38 @@ def test_render_structure_and_audit():
     assert report["keyframes"] == 2
 
 
-def test_track_color_is_stable_across_frames():
-    """长动画防闪色：同一轨迹所有关键帧 background 恒定（均值色）。"""
-    import re as _re
+def test_track_color_declared_once_per_layer():
+    """防闪色 + 省字节：轨迹均值色只写一次（进 .lN 类），关键帧里不许重复。
+
+    同一种颜色逐帧重复写，体积随关键帧数线性膨胀，却一个像素都不影响——
+    所以断言两头都要钉：类里恰好声明一次、关键帧块里一次都没有。
+    """
     a = Track(keys=[_key(0, x=10, color=(120, 40, 200)),
                     _key(1, x=12, color=(130, 50, 210)),
                     _key(2, x=14, color=(110, 30, 190))])
     doc, _ = render_animation([a], (100, 100), 3,
                               AnimationConfig(max_bytes=10_000_000))
+    layer = re.search(r"\.l0\{([^}]*)\}", doc)
+    assert layer is not None
+    assert layer.group(1).count("background:") == 1
+    color = re.search(r"background:(#[0-9a-f]{6})", layer.group(1)).group(1)
+    assert doc.count(color) == 1                     # 整份文档里只出现这一次
     start = doc.index("@keyframes k0{")
-    end = doc.find("</style>", start)
-    colors = set(_re.findall(r"background:(#[0-9a-f]{6})", doc[start:end]))
-    assert len(colors) == 1
+    block = doc[start:doc.find("</style>", start)]
+    assert "background" not in block
+    report = audit_html(doc)
+    assert report["valid"], report["errors"]
+
+
+def test_animation_title_is_escaped():
+    """<title> 与 aria-label 两处都转义，且转义后仍过审计。"""
+    doc, _ = render_animation(_tracks(), (100, 100), 3,
+                              AnimationConfig(title='a<b>&"c', max_bytes=10_000_000))
+    assert 'a&lt;b&gt;&amp;&quot;c' in doc
+    assert "<title>a<b>" not in doc and 'aria-label="a<b' not in doc
+    assert doc.count("&lt;b&gt;") == 2               # title 与 aria-label 各一处
+    report = audit_html(doc)
+    assert report["valid"], report["errors"]
 
 
 def test_render_tween_aligns_vertices():

@@ -27,9 +27,12 @@ class BudgetExceeded(ValueError):
 class DocumentConfig:
     """出文档所需的这点参数（几何不在这里，在 Illustration 里）。
 
-    title: 文档标题（同时充当 aria-label 与页面标题）；
+    title: 文档标题（同时充当 aria-label 与页面标题）——**进文档前必须 html.escape**：
+        它落在元素文本与属性值两处，四个出文档的地方（CSS/SVG 后端、矢量动画、
+        扫描线动画）口径必须一致，只转一处等于没转；
     original_size: 原图尺寸——只用来算容器长宽比（描摹尺寸可能被压过）；
-    max_bytes: 体积上限，超了抛 BudgetExceeded。
+    max_bytes: 体积上限，超了抛 BudgetExceeded；每个渲染器都要在末尾终检，
+        只在静态线上挂着，另一条线就变成「配置里承诺、实际不生效」。
     """
 
     title: str

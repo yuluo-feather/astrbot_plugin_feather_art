@@ -3,12 +3,14 @@
 跟静态渲染同一套脾气：
 - 图层 = <div class="layer lN">，样式全在 <style> 里；
 - 每层一条 @keyframes，step-end 硬切（稳、省），或顶点对齐后 linear 补间（顺）；
+  轨迹色写在 .lN 类里，关键帧只写 clip-path——同一种颜色不逐帧重复，长动画省下可观字节；
 - 坐标归一化成画布百分比，颜色一律 #rrggbb，数字压缩走 geometry.number；
 - 预算记账：边写边数，超限抛 BudgetExceeded（跟静态渲染共用一个异常）。
 """
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass
 
 import numpy as np
@@ -87,12 +89,15 @@ def render_animation(tracks: list[Track], size: tuple[int, int],
     ordered = sorted(tracks, key=lambda t: max(k.area for k in t.keys), reverse=True)
 
     keyframe_blocks: list[str] = []
+    layer_colors: list[str] = []
     keyframe_total = 0
     for index, track in enumerate(ordered):
         # 轨迹级固定色：每帧独立量化会让同一物体跨帧色板漂移、颜色乱跳，
         # 这是长动画「闪色」的主源——统一到轨迹平均色，颜色恒定不闪。
         _colors = np.asarray([k.color for k in track.keys], dtype=float)
         track_color = tuple(np.round(_colors.mean(axis=0)).astype(int))
+        # 轨迹色是常量，只声明一次（进 .lN 类）；关键帧里逐帧重复写它纯属浪费
+        layer_colors.append(hex_color(track_color))
         # 逐帧展开 + 锚定：None → 最近前一个有值的特征
         filled: list[ShapeKey] = []
         last: ShapeKey | None = None
@@ -111,13 +116,10 @@ def render_animation(tracks: list[Track], size: tuple[int, int],
             pct = number(frame_idx / frame_count * 100.0, 2)
             poly = _pad_poly(key.poly, max_len) if config.tween else key.poly
             clip = "polygon(" + _poly_text(poly, size) + ")"
-            keyframes.append(
-                f"{pct}%{{clip-path:{clip};background:{hex_color(track_color)}}}")
+            keyframes.append(f"{pct}%{{clip-path:{clip}}}")
         # 末帧补回首帧（循环首尾衔接）
         poly0 = _pad_poly(filled[0].poly, max_len) if config.tween else filled[0].poly
-        keyframes.append(
-            f"100%{{clip-path:polygon({_poly_text(poly0, size)});"
-            f"background:{hex_color(track_color)}}}")
+        keyframes.append(f"100%{{clip-path:polygon({_poly_text(poly0, size)})}}")
         keyframe_total += len(keyframes)
         keyframe_blocks.append(f"@keyframes k{index}{{{''.join(keyframes)}}}")
         progress(f"Layer {index + 1}/{len(ordered)}")
@@ -135,18 +137,20 @@ def render_animation(tracks: list[Track], size: tuple[int, int],
         f"animation-duration:{duration:.2f}s;"
         f"animation-timing-function:{timing};"
         f"animation-iteration-count:{'infinite' if config.loop else '1'}}}\n"
-        + "\n".join(f".l{i}{{animation-name:k{i}}}" for i in range(len(ordered)))
+        + "\n".join(f".l{i}{{animation-name:k{i};background:{color}}}"
+                    for i, color in enumerate(layer_colors))
         + "\n" + "\n".join(keyframe_blocks) + "\n"
     )
     writer.push(css)
+    label = html.escape(config.title, quote=True)
     document = (
         "<!DOCTYPE html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         "<meta name=\"color-scheme\" content=\"light\">"
         f"{_CSP_META}"
-        f"<title>{config.title}</title><style>{writer.text}</style></head><body>"
+        f"<title>{label}</title><style>{writer.text}</style></head><body>"
         "<div class=\"fallsafe\"></div>"
-        "<main class=\"illustration\" role=\"img\" aria-label=\"羽画 · 纯 CSS 动画\">"
+        f"<main class=\"illustration\" role=\"img\" aria-label=\"{label}\">"
         + "".join(f'<div class="layer l{i}"></div>' for i in range(len(ordered)))
         + "</main></body></html>"
     )

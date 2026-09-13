@@ -19,11 +19,12 @@ from typing import Callable
 
 from .feather_art import __version__
 from .feather_art.audit import audit_html
+from .feather_art.contract import BudgetExceeded
 from .feather_art.imaging import load_image
 from .feather_art.merge import merge_regions
 from .feather_art.presets import PRESETS, resolve
 from .feather_art.quantize import quantize
-from .feather_art.render import BudgetExceeded, render_document
+from .feather_art.render import render_document
 
 
 class TraceError(ValueError):

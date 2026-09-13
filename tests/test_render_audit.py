@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from data.plugins.astrbot_plugin_feather_art.feather_art import audit, render
-from data.plugins.astrbot_plugin_feather_art.feather_art.render import (
+from data.plugins.astrbot_plugin_feather_art.feather_art import audit, backends, render
+from data.plugins.astrbot_plugin_feather_art.feather_art.contract import (
     BudgetExceeded, FALLSAFE_MESSAGE,
 )
 
@@ -54,6 +54,24 @@ def test_render_budget_exceeded():
             reference, labels, palette, (8, 8), background=(255, 255, 255),
             title="测试稿", epsilon=0.5, gradients=False, underpainting=False,
             max_bytes=200, progress=lambda _: None)
+
+
+def test_backend_registry_wired():
+    """默认路径 = 按名取到的 css 后端；名字不认识就直接报错，不悄悄退回默认。
+
+    可插拔的验收不是接口写得漂亮，是两条路都真被走到、且落在同一处。
+    """
+    reference, labels, palette = _small_art()
+    args = (reference, labels, palette, (8, 8))
+    kwargs = {"background": (255, 255, 255), "title": "测试稿", "epsilon": 0.5,
+              "gradients": False, "underpainting": False,
+              "max_bytes": 10 ** 7, "progress": lambda _: None}
+    default_doc, _ = render.render_document(*args, **kwargs)
+    named_doc, _ = render.render_document(*args, backend="css", **kwargs)
+    assert default_doc == named_doc
+    assert backends.get_backend("css").name == "css"
+    with pytest.raises(ValueError):
+        backends.get_backend("svg")
 
 
 def _valid_doc() -> str:

@@ -20,8 +20,8 @@ from typing import Callable
 import cv2
 import numpy as np
 
+from .contract import FALLSAFE_MESSAGE
 from .geometry import hex_color
-from .render_animation import FALLSAFE_MESSAGE
 
 DENOISE_KERNEL = 3   # 去抖动中值滤波核
 QUANT_STEP = 16      # 颜色量化步长（跨帧收敛，帧间色不漂移）

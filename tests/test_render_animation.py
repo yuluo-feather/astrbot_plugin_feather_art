@@ -4,7 +4,7 @@ import pytest
 
 from data.plugins.astrbot_plugin_feather_art.feather_art.animate import ShapeKey, Track  # noqa: E402
 from data.plugins.astrbot_plugin_feather_art.feather_art.audit import audit_html  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art.feather_art.render import (  # noqa: E402
+from data.plugins.astrbot_plugin_feather_art.feather_art.contract import (  # noqa: E402
     BudgetExceeded, FALLSAFE_MESSAGE,
 )
 from data.plugins.astrbot_plugin_feather_art.feather_art.render_animation import (  # noqa: E402

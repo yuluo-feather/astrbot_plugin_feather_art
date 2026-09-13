@@ -14,8 +14,8 @@ from dataclasses import dataclass
 import numpy as np
 
 from .animate import Track, ShapeKey, anchor_track
+from .contract import BudgetExceeded, FALLSAFE_MESSAGE
 from .geometry import hex_color, number
-from .render import BudgetExceeded, FALLSAFE_MESSAGE
 
 _CSP_META = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; script-src \'none\'; connect-src \'none\'; font-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">'
 

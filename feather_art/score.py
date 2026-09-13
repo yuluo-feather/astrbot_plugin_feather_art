@@ -54,20 +54,49 @@ class Rasterizer:
         region = self.composite[y:y + height, x:x + width]
         region[mask] = layer[mask]
 
-    def fill_rings(self, points, origin, size, paint):
-        """偶奇环（画布空间 float 点集）涂色：先栅格化环内掩码再上色。"""
+    def fill_rings(self, rings, origin, size, paint):
+        """多环涂色（画布空间 float 点集）：逐环异或成掩码，再按掩码上色。
+
+        逐环异或就是偶奇填充：外环留下的洞会被随后的洞环抵消掉，和浏览器对
+        「外环 + 反向洞环」的 nonzero 结果一致（进文档前方向已归一化过）。
+
+        别改回「桥接成单条多边形再 fillPoly」：桥是给 clip-path 的单多边形
+        语法补的，属序列化层的事；拿它去 fillPoly，连接线本身也被涂上——
+        碎块区域环多又散得开，一根连接线能横跨大半个包围盒，实测一张
+        474x947 的牌面里，带洞形状合计涂了 129 万 px（画布才 45 万），
+        逐环异或只有 29 万。对同一张图的浏览器截图：桥接版 MAE 38.28、
+        异或版 7.31（浏览器自己 3.78），相似度从 9.2 虚报到 40.5。
+        """
         x0 = max(0, int(math.floor(origin[0])))
         y0 = max(0, int(math.floor(origin[1])))
         x1 = min(self.composite.shape[1], int(math.ceil(origin[0] + size[0])))
         y1 = min(self.composite.shape[0], int(math.ceil(origin[1] + size[1])))
         if x1 <= x0 or y1 <= y0:
             return
-        local = np.asarray(points) - (x0, y0)
         mask = np.zeros((y1 - y0, x1 - x0), np.uint8)
-        cv2.fillPoly(mask, [np.round(local).astype(np.int32)], 1)
+        for ring in rings:
+            single = np.zeros_like(mask)
+            local = np.asarray(ring, np.float64) - (x0, y0)
+            cv2.fillPoly(single, [np.round(local).astype(np.int32)], 1)
+            mask ^= single
         layer = paint_layer(paint, x1 - x0, y1 - y0)
         region = self.composite[y0:y1, x0:x1]
         region[mask > 0] = layer[mask > 0]
+
+    def clip_to(self, rings, background):
+        """按剪影裁剪整幅合成结果：剪影之外恢复成底色。
+
+        底板层在文档里是包在一层 clip-path 里的，镜像必须照着裁；否则那些
+        拉伸贴满画布的粗色块会在剪影外留下成品里根本看不见的颜色。
+        在这张 474x947 的图上它对最终 MAE 没影响（前景把剪影外也盖满了），
+        但只画到底板那一步时实测差 7.4——它不是哑规则，只是被前景遮住了。
+        """
+        mask = np.zeros(self.composite.shape[:2], np.uint8)
+        for ring in rings:
+            single = np.zeros_like(mask)
+            cv2.fillPoly(single, [np.round(np.asarray(ring, np.float64)).astype(np.int32)], 1)
+            mask ^= single
+        self.composite[mask == 0] = np.asarray(background, np.float32)
 
     def errors(self, reference):
         """全尺寸 MAE + 64px 缩略图 MAE（0-255，越低越贴近）。"""

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from .geometry import bridge_rings, component_rings, mask_rings
+from .geometry import component_rings, mask_rings
 from .merge import label_components
 from .paint import Solid, paint_for_region
 from .quantize import quantize
@@ -140,6 +140,9 @@ class _Producer:
                 # 这是既有口径，改了 MAE 就跟着变
                 full = cv2.resize(mask, (self.width, self.height), interpolation=cv2.INTER_NEAREST)
                 self.raster.fill_mask(full > 0, 0, 0, Solid(rgb))
+        if self.raster is not None:
+            # 底板层在文档里包在剪影的 clip-path 里，镜像跟着裁
+            self.raster.clip_to(clip.rings, self.background)
         return Foundation(clip, regions)
 
     # ---- 前景 ----
@@ -192,7 +195,7 @@ class _Producer:
         if np.any(size <= 0):
             return None
         if self.raster is not None:
-            self.raster.fill_rings(bridge_rings(rings), origin, size, paint)
+            self.raster.fill_rings(rings, origin, size, paint)
         return Region(rings, paint, (origin, size))
 
 

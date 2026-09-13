@@ -41,6 +41,27 @@ def png_photo_like(size=(180, 140), seed=7) -> bytes:
     return buffer.tobytes()
 
 
+def png_dots_like(size=(200, 150)) -> bytes:
+    """确定性「碎点」PNG：浅底 + 40 个散得开的深色小点 + 一块大色块。
+
+    存在的理由：散点会被「碎块聚组」并成同一个多环区域，而环与环之间的
+    连接线是桥接填法的软肋（桥本身被当成环壁涂上）。这张图专门喂那条路，
+    喂不到就没法用相似度当判据。
+    """
+    import cv2
+    import numpy as np
+
+    width, height = size
+    canvas = np.full((height, width, 3), 240, np.uint8)
+    for index in range(40):
+        x, y = 10 + (index % 8) * 23, 10 + (index // 8) * 20
+        cv2.rectangle(canvas, (x, y), (x + 3, y + 3), (36, 34, 52), -1)
+    cv2.rectangle(canvas, (55, 100), (165, 138), (150, 92, 70), -1)
+    ok, buffer = cv2.imencode(".png", canvas)
+    assert ok
+    return buffer.tobytes()
+
+
 def png_bytes(size=(64, 64), color=(255, 255, 255), mode="RGB") -> bytes:
     """纯色 PNG 字节流。"""
     buf = BytesIO()

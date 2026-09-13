@@ -17,6 +17,7 @@ from typing import Protocol
 from .contract import FALLSAFE_MESSAGE, BudgetExceeded, DocumentConfig
 from .geometry import bridge_rings, hex_color, number, polygon_css
 from .paint import Gradient
+from .svg_backend import SvgBackend
 
 # 底板多边形的小数位（前景按包围盒尺寸算，见 CssShapeWriter.shape）
 FOUNDATION_DIGITS = 4
@@ -174,7 +175,7 @@ html,body{{margin:0;min-height:100%;background:{matte};color-scheme:light}}
         return document, writer.stats
 
 
-BACKENDS: dict[str, RenderBackend] = {"css": CssBackend()}
+BACKENDS: dict[str, RenderBackend] = {"css": CssBackend(), "svg": SvgBackend()}
 
 
 def get_backend(name: str) -> RenderBackend:

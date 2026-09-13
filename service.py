@@ -19,6 +19,7 @@ from typing import Callable
 
 from .feather_art import __version__
 from .feather_art.audit import audit_html
+from .feather_art.backends import BACKENDS
 from .feather_art.contract import BudgetExceeded
 from .feather_art.imaging import load_image
 from .feather_art.merge import merge_regions
@@ -42,6 +43,9 @@ class TraceConfig:
     score: bool = True
     gradients: bool = True
     underpainting: bool = True
+    # 渲染后端：css 是产品身份（默认），svg 是实验分支里那门并列方言。
+    # 现在只有代码层能设（用户配置面等 P4 自动选择时再开），名字不认识就当场报。
+    render_backend: str = "css"
     progress: Callable[[str], None] = field(default=lambda _: None, repr=False)
 
     def __post_init__(self):
@@ -57,6 +61,10 @@ class TraceConfig:
             except (TypeError, ValueError):
                 value = default
             setattr(self, name, max(0.0, value))
+        if self.render_backend not in BACKENDS:
+            # 不认识的名字当场报出来，别等画完一整张才发现（也不悄悄退回 css）
+            raise TraceError(f"未知的渲染后端：{self.render_backend}"
+                             f"（可用的有 {'、'.join(sorted(BACKENDS))}）")
 
 
 FIT_TOLERANCE = 1.02  # fit 预算容差：允许 2% 溢出，避免卡线触发整级重跑
@@ -256,6 +264,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
                 epsilon=candidate["epsilon"], gradients=traced.gradients,
                 underpainting=traced.underpainting, max_bytes=target,
                 progress=traced.progress, score=traced.score,
+                backend=traced.render_backend,
             )
         except BudgetExceeded as exceeded:
             if not traced.fit_mb:
@@ -274,7 +283,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
             # 至少前进一步（防预测档与当前档相同）；已到最粗档仍超支 → 耗尽走熔断
             index = max(ladder.index(nxt) if nxt else index, index + 1)
             continue
-        audit = audit_html(document)
+        audit = audit_html(document, stats["backend"])
         if not audit["valid"]:
             raise TraceError("生成的 HTML 未通过契约审计：" + "、".join(audit["errors"][:3]))
         attempts.append({"max_width": candidate["max_width"], "colors": candidate["colors"],
@@ -285,6 +294,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
 
     report: dict = {
         "version": __version__,
+        "backend": stats["backend"],
         "preset": {"key": preset.key, "name": preset.name},
         "settings": chosen,
         "original_size": list(original),

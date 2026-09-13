@@ -70,8 +70,9 @@ def test_backend_registry_wired():
     named_doc, _ = render.render_document(*args, backend="css", **kwargs)
     assert default_doc == named_doc
     assert backends.get_backend("css").name == "css"
+    assert sorted(backends.BACKENDS) == ["css", "svg"]      # 实验分支：两门方言都在册
     with pytest.raises(ValueError):
-        backends.get_backend("svg")
+        backends.get_backend("webgl")
 
 
 def _valid_doc() -> str:

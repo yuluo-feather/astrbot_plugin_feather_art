@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.0-f8a5c2" alt="v0.3.0"/>
+  <img src="https://img.shields.io/badge/version-v0.3.1-f8a5c2" alt="v0.3.1"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -211,7 +211,7 @@ tests/                # pytest suite (grows with development)
 
 ## 📜 Changelog
 
-#### Unreleased
+#### v0.3.1
 
 - Fix: the animation size cap (`max_mb`) was not enforced on the default scanline style, so oversized output was delivered anyway; both animation paths honour it now — over the cap you just get told the limit, nothing is written
 - Fix: wide, flat animations (banners, progress bars) used to fail outright; they trace normally now

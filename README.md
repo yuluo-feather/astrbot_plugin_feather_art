@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.0-f8a5c2" alt="v0.3.0"/>
+  <img src="https://img.shields.io/badge/version-v0.3.1-f8a5c2" alt="v0.3.1"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -211,7 +211,7 @@ tests/                # pytest 用例（随开发增长）
 
 ## 📜 更新记录
 
-#### Unreleased
+#### v0.3.1
 
 - 修复：动图的体积上限（`max_mb`）以前对默认的扫描线风格不生效，超限成品会照样发出；现在两条动画线一视同仁，超限只把结果告诉你、不落盘
 - 修复：又宽又扁的动图（横幅、进度条）以前整单失败，现在能正常描完

@@ -141,7 +141,7 @@ Configurable from the AstrBot plugin panel:
 | `score` | `true` | compute the offline MAE similarity score |
 | `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
 | `animation_style` | `scanline` | animation rendering style: scanline (default; per-pixel, seamless at any zoom) | vector (legacy pipeline, supports tween) |
-| `render_backend` | `css` | static trace backend: css = pure CSS artwork (default, the product identity) | svg = inline SVG (optional dialect: about half the bytes, bit-identical across engines; animations unaffected) |
+| `render_backend` | `css` | static trace backend: css = pure CSS artwork (default, the product identity) | svg = inline SVG (optional dialect: about half the bytes; the same artwork is pixel-identical across Chromium / Firefox / WebKit — measured on a single artwork at three widths; animations unaffected) |
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |
@@ -210,6 +210,12 @@ tests/                # pytest suite (grows with development)
 ```
 
 ## 📜 Changelog
+
+#### Unreleased
+
+- Fix: the animation size cap (`max_mb`) was not enforced on the default scanline style, so oversized output was delivered anyway; both animation paths honour it now — over the cap you just get told the limit, nothing is written
+- Fix: wide, flat animations (banners, progress bars) used to fail outright; they trace normally now
+- Tweak: slightly smaller animation stylesheets — same picture, smaller file
 
 #### v0.3.0
 

@@ -2,6 +2,28 @@
 
 > 每个版本条目均为中文在前、英文在后。
 
+#### Unreleased
+
+##### 🐛 修复
+
+- **动图的体积上限以前形同虚设**：扫描线风格（默认档）不受 `max_mb` 约束，超限成品会照样发出来（实测一张 48 帧动图能产出 76 MiB 的文件）。现在两条动画线一视同仁：超限只把结果告诉你，不再落盘、不再发送
+- **细长条幅动图描不出来**：横幅、进度条这类又宽又扁的动图会整单失败，现在能正常描完
+
+##### ⚡ 性能
+
+- **动图样式体积略降**：矢量风格不再逐个关键帧重复声明同一种颜色，同样的画面文件更小
+
+**English**
+
+##### 🐛 Fixes
+
+- **The animation size cap was not actually enforced**: the scanline style (the default) ignored `max_mb`, so oversized output was delivered anyway — a 48-frame animation measured at 76 MiB. Both animation paths honour it now: over the cap, you get told the limit and nothing is written or sent
+- **Wide, flat animations failed to trace**: banner and progress-bar style GIFs made the whole job fail. They trace normally now
+
+##### ⚡ Performance
+
+- **Slightly smaller animation stylesheets**: the vector style no longer repeats the same colour on every keyframe — same picture, smaller file
+
 #### v0.3.0
 
 ##### ✨ 新功能

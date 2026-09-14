@@ -14,6 +14,8 @@ from io import BytesIO
 
 from PIL import Image
 
+from .errors import UserFaultError
+
 MAX_PIXELS_DEFAULT = 40_000_000
 
 # 扩展名到格式提示（仅用于错误文案更贴心，不做强校验）
@@ -22,23 +24,20 @@ _EXT_HINT = {".jpg": "JPEG 图片", ".jpeg": "JPEG 图片", ".png": "PNG 图片"
 
 
 def user_fault(exc: Exception) -> str | None:
-    """异常 → 可给用户看的中文文案；内部异常返回 None（只进日志）。
+    """异常 → 可给用户看的中文文案；其余返回 None（只进日志）。
 
-    安全修复：cv2 / PIL / 框架的原始异常消息多为 ASCII 开头，
-    可能带服务器路径与内部结构——一律不外露，用户侧走固定友好文案。
-    判定规则是确定性的（首字符是否 ASCII）：我们自己的用户可见文案
-    首字符都是中文，不会误伤。
+    只认 UserFaultError：那是我们主动为用户写的文案。cv2 / PIL / 框架的原始
+    异常消息可能带服务器路径与内部结构，一律不外露。
     """
-    text = str(exc)
-    if not text or text[0].isascii():
-        return None
-    return text
+    if isinstance(exc, UserFaultError):
+        return str(exc)
+    return None
 
 
 def check_file_size(data: bytes, max_bytes: int) -> None:
     """文件太大就直接扔个能看的异常回去。"""
     if len(data) > max_bytes:
-        raise ValueError(f"图片太大了（{len(data) / 1024 / 1024:.1f} MiB），换个小的罢。")
+        raise UserFaultError(f"图片太大了（{len(data) / 1024 / 1024:.1f} MiB），换个小的罢。")
 
 
 def inspect_animation(data: bytes, max_pixels: int = MAX_PIXELS_DEFAULT,
@@ -59,15 +58,15 @@ def inspect_animation(data: bytes, max_pixels: int = MAX_PIXELS_DEFAULT,
             width, height = handle.size
             frames = int(getattr(handle, "n_frames", 1))
     except ValueError as exc:
-        raise ValueError("这不是一张能读的图片，换个格式试试（PNG / JPG / WebP / GIF）。") from exc
+        raise UserFaultError("这不是一张能读的图片，换个格式试试（PNG / JPG / WebP / GIF）。") from exc
     except Exception as exc:
-        raise ValueError("图片解析失败，可能文件损坏。") from exc
+        raise UserFaultError("图片解析失败，可能文件损坏。") from exc
     if frames > max_frames:
-        raise ValueError(f"动图太长了（{frames} 帧，上限 {max_frames}），剪一剪再描。")
+        raise UserFaultError(f"动图太长了（{frames} 帧，上限 {max_frames}），剪一剪再描。")
     if width * height > max_pixels:
-        raise ValueError(f"图片太精细了（{width}×{height}），超出 {max_pixels:,} 像素上限，压一压再描。")
+        raise UserFaultError(f"图片太精细了（{width}×{height}），超出 {max_pixels:,} 像素上限，压一压再描。")
     if frames > 1 and width * height * frames > max_pixels * 4:
-        raise ValueError(f"动图总像素超限（{width}×{height}×{frames} 帧），压一压再描。")
+        raise UserFaultError(f"动图总像素超限（{width}×{height}×{frames} 帧），压一压再描。")
     return fmt, (width, height), frames
 
 

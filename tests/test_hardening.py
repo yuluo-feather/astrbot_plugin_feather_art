@@ -86,11 +86,22 @@ def test_user_fault_internal_not_leaked():
     assert hardening.user_fault(ValueError("cannot identify image file")) is None
 
 
-def test_user_fault_chinese_passes():
-    """自家中文文案（首字符非 ASCII）正常放行给用户。"""
+def test_user_fault_only_passes_typed_faults():
+    """只有 UserFaultError 才当用户文案。
+
+    以前靠「首字符是不是 ASCII」猜：中文开头的内部文案会原样透给用户，
+    ASCII 开头的用户文案反而被吞掉。改成类型判定后，两边都由代码说清。
+    """
     msg = "图片太大了（12.3 MiB），换个小的罢。"
-    assert hardening.user_fault(ValueError(msg)) == msg
-    assert hardening.user_fault(ValueError("不支持动图/多帧输入，请先导出单帧。")) == (
+    assert hardening.user_fault(hardening.UserFaultError(msg)) == msg
+    assert hardening.user_fault(hardening.UserFaultError("不支持动图/多帧输入，请先导出单帧。")) == (
         "不支持动图/多帧输入，请先导出单帧。")
-    assert hardening.user_fault(ValueError("输出体积超预算，减小图片或换低一档精度再来。")) == (
+    assert hardening.user_fault(hardening.UserFaultError("输出体积超预算，减小图片或换低一档精度再来。")) == (
         "输出体积超预算，减小图片或换低一档精度再来。")
+
+
+def test_user_fault_plain_exception_never_leaks():
+    """普通异常一律不外露——即便文案是中文、看着像给用户写的。"""
+    assert hardening.user_fault(ValueError("图片太大了（12.3 MiB），换个小的罢。")) is None
+    assert hardening.user_fault(ValueError("[羽画] 图片太大")) is None
+    assert hardening.user_fault(ValueError("未知的审计方言：svg2")) is None

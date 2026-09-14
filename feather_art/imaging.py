@@ -12,6 +12,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
+from ..errors import UserFaultError
+
 # 输入就是普通图片字节的来源类型
 SourceLike = bytes | bytearray | Path | str
 
@@ -56,7 +58,7 @@ def load_image(source: SourceLike, max_width: int, matte: tuple[int, int, int]) 
     with handle:
         frames = getattr(handle, "n_frames", 1)
         if frames > 1:
-            raise ValueError("不支持动图/多帧输入，请先导出单帧。")
+            raise UserFaultError("不支持动图/多帧输入，请先导出单帧。")
         reference, original_size = _to_reference(handle, matte, max_width)
     return _denoise(reference), original_size
 
@@ -78,7 +80,7 @@ def decode_frames(source: SourceLike, max_width: int, matte: tuple[int, int, int
     with handle:
         total = int(getattr(handle, "n_frames", 1))
         if total <= 1:
-            raise ValueError("这不是多帧动图（只有 1 帧）。")
+            raise UserFaultError("这不是多帧动图（只有 1 帧）。")
         # 首帧时长估算全局节奏（GIF/WebP 帧间隔通常均匀），按秒定采样数
         handle.seek(0)
         est_duration = _frame_duration(handle) * total

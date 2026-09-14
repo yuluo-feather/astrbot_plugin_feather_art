@@ -14,6 +14,7 @@ import json
 import time
 from pathlib import Path
 
+from .errors import UserFaultError
 from .feather_art import __version__
 from .feather_art.animate import extract_shapes, track_shapes
 from .feather_art.audit import audit_html
@@ -95,9 +96,9 @@ def trace_animation(image_bytes: bytes, preset_key: str, out_path: Path,
                                 progress=traced.progress))
             shapes_total = sum(len(x) for x in seq)
     except BudgetExceeded as exceeded:
-        # 动画线没有 fit 阶梯可退，超预算只能明说。文案首字符是中文，会被当
-        # 用户可见文案透出，而不是掉进「机器手抖」的兜底。
-        raise TraceError(
+        # 动画线没有 fit 阶梯可退，超预算只能明说。用 UserFaultError 就是让
+        # 这条文案原样到用户手上，而不是掉进「机器手抖」的兜底。
+        raise UserFaultError(
             f"动图描出来超过体积上限了（{traced.max_mb:g} MiB）："
             "剪短一点，或把采样帧数调小再来。") from exceeded
     audit = audit_html(document)

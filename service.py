@@ -17,6 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .errors import TraceError, UserFaultError
 from .feather_art import __version__
 from .feather_art.audit import audit_html
 from .feather_art.backends import BACKENDS, backend_title
@@ -26,10 +27,6 @@ from .feather_art.merge import merge_regions
 from .feather_art.presets import PRESETS, resolve
 from .feather_art.quantize import quantize
 from .feather_art.render import render_document
-
-
-class TraceError(ValueError):
-    """转换失败；message 是可直接回给用户的中文文案。"""
 
 
 @dataclass
@@ -68,7 +65,7 @@ class TraceConfig:
             # 这道校验只对静态后端有意义，但动画线也会构造 TraceConfig、跟着跑
             # 一次校验——注册表改名会连带把动画线拦在门口。这是有意的顺序
             # （宁可当场报错），但别误以为动画线用得上后端。
-            raise TraceError(f"未知的渲染后端：{self.render_backend}"
+            raise UserFaultError(f"未知的渲染后端：{self.render_backend}"
                              f"（可用的有 {'、'.join(sorted(BACKENDS))}）")
 
 
@@ -260,6 +257,8 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
         chosen = candidate
         try:
             reference, original = load_image(image_bytes, candidate["max_width"], traced.background)
+        except UserFaultError:
+            raise                     # 已是写给用户看的文案，别改类型把它吞掉
         except ValueError as exc:
             raise TraceError(str(exc)) from exc
         labels, palette = quantize(reference, candidate["colors"])
@@ -275,7 +274,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
             )
         except BudgetExceeded as exceeded:
             if not traced.fit_mb:
-                raise TraceError("输出体积超预算，减小图片或换低一档精度再来。") from exceeded
+                raise UserFaultError("输出体积超预算，减小图片或换低一档精度再来。") from exceeded
             attempts.append({"max_width": candidate["max_width"], "colors": candidate["colors"],
                              "bytes": exceeded.byte_count, "exceeded": True})
             history.append({
@@ -297,7 +296,7 @@ def trace_image(image_bytes: bytes, preset_key: str, out_path: Path, *,
                          "bytes": audit["bytes"], "exceeded": False})
         break
     else:
-        raise TraceError(f"即便降到最粗的档也装不下 {traced.fit_mb} MiB，这张图可能太花了。")
+        raise UserFaultError(f"即便降到最粗的档也装不下 {traced.fit_mb} MiB，这张图可能太花了。")
 
     report: dict = {
         "version": __version__,

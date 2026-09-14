@@ -23,7 +23,7 @@ from astrbot.api.event import AstrMessageEvent, MessageChain, filter
 from astrbot.api.message_components import Image, Plain
 
 try:
-    from .config import load_settings
+    from .config import DEFAULTS, load_settings
     from .deliver import build_chain
     from .hardening import (animation_length_hint, check_file_size,
                           inspect_animation, user_fault)
@@ -173,8 +173,8 @@ class FeatherArtPlugin(Star):
 
         try:
             data = img_path.read_bytes()
-            check_file_size(data, int(self.settings.get("max_image_mb", 20.0) * 1024 * 1024))
-            fmt, (w, h), frames = inspect_animation(data, int(self.settings.get("max_pixels", 40_000_000)))
+            check_file_size(data, int(self.settings.get("max_image_mb", DEFAULTS["max_image_mb"]) * 1024 * 1024))
+            fmt, (w, h), frames = inspect_animation(data, int(self.settings.get("max_pixels", DEFAULTS["max_pixels"])))
             if frames > 1:
                 hint = animation_length_hint(data, frames, text)
                 if hint:

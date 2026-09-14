@@ -69,8 +69,22 @@ def load_settings(astrbot_config=None) -> dict:
                     value = nested.get(key)
             if value is None:
                 value = default
-            # 类型宽容：WebUI 可能回传字符串数字
-            if isinstance(default, (int, float)) and not isinstance(value, (int, float)):
+            # 类型宽容：WebUI 可能回传字符串（"false" / "12" 这类）
+            if isinstance(default, bool):
+                # bool 必须单独走：bool 是 int 的子类，落进下面的数值分支会执行
+                # bool(float("false")) → ValueError → 被外层 except 静默吞掉、回默认值，
+                # 于是用户在 WebUI 里关不掉 llm_tool / score。字符串按常见写法认。
+                if isinstance(value, str):
+                    flag = value.strip().lower()
+                    if flag in ("1", "true", "yes", "on"):
+                        value = True
+                    elif flag in ("0", "false", "no", "off", ""):
+                        value = False
+                    else:
+                        value = bool(flag)
+                elif not isinstance(value, bool):
+                    value = bool(value)
+            elif isinstance(default, (int, float)) and not isinstance(value, (int, float)):
                 value = type(default)(float(value))
             settings[key] = value
         except Exception:

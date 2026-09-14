@@ -91,6 +91,36 @@ def test_string_number_tolerant():
     assert settings["cooldown"] == 30
 
 
+def test_bool_string_flags_actually_apply():
+    """WebUI 回传字符串布尔值时必须真的生效。
+
+    回归：bool 是 int 的子类，旧实现里 default=True 会落进数值分支执行
+    bool(float("false")) → ValueError → 被外层 except 静默吞掉、回默认值，
+    于是「关掉自然语言入口」这个开关是哑的：用户在 WebUI 里关不掉它。
+    """
+    for raw, want in (("false", False), ("False", False), ("FALSE", False), ("0", False),
+                      ("no", False), ("off", False), ("", False),
+                      ("true", True), ("TRUE", True), ("on", True), ("yes", True), ("1", True)):
+        assert config.load_settings({"llm_tool": raw})["llm_tool"] is want, raw
+        assert config.load_settings({"score": raw})["score"] is want, raw
+
+
+def test_bool_passthrough_and_numeric():
+    """真 bool 直通；0/1 这类数字也要落成 bool（旧实现会原样回传 int）。"""
+    assert config.load_settings({"llm_tool": False})["llm_tool"] is False
+    assert config.load_settings({"llm_tool": True})["llm_tool"] is True
+    assert config.load_settings({"llm_tool": 0})["llm_tool"] is False
+    assert config.load_settings({"llm_tool": 1})["llm_tool"] is True
+
+
+def test_bool_branch_does_not_hijack_numeric_keys():
+    """新加的 bool 分支不能把数值项抢走。"""
+    settings = config.load_settings({"fit_mb": "40", "cooldown": "30", "max_pixels": "100"})
+    assert settings["fit_mb"] == 40.0 and isinstance(settings["fit_mb"], float)
+    assert settings["cooldown"] == 30
+    assert settings["max_pixels"] == 100
+
+
 def test_unknown_key_not_injected():
     settings = config.load_settings({"not_a_real_key": 1})
     assert "not_a_real_key" not in settings

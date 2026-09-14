@@ -46,7 +46,8 @@ def _frames(n=3, size=(16, 8)):
 
 def test_scanline_structure_and_audit():
     doc, stats = render_scanline(_frames(3), ScanlineConfig(duration=0.9))
-    assert stats["style"] == "scanline" and stats["rows"] == 4  # 8 // ROW_PX
+    # 行数口径 = h // ROW_PX，用常量表达，改 ROW_PX 时不必再来改这里
+    assert stats["style"] == "scanline" and stats["rows"] == 8 // ROW_PX
     assert stats["frames"] == 3 and stats["duration"] == 0.9
     assert '@keyframes k0' in doc
     assert 'class="illustration"' in doc

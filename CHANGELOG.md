@@ -8,9 +8,9 @@
 
 - **选中内联 SVG 方言后，成品的页签还自称「纯 CSS」**：配置切到 `svg` 描出来的文档，在浏览器页签和朗读标签上写的仍是「羽画 · 纯 CSS 描摹」。现在标题跟着实际方言走——SVG 稿自称「羽画 · SVG 描摹」，纯 CSS 稿一字未变
 
-##### ⚡ 性能
+##### 🎨 画质
 
-- **动图成品体积降一到两成**：默认的扫描线风格原本把每两行平均成一行——平均会把上下两行的色带边界叠在一起，越写越长。改为直接取其中一行真实像素，并折叠相邻的重复帧。六张真实动图实测文件小 **13%~19%**，画面差异只在轮廓上一像素级的细线
+- **动图描摹改成画质优先**：不再把每两行压成一行（逐行还原）、颜色精度从 16 步提到 8 步，也不再做去抖动滤波——原本被抹平的抖动颗粒与细节都留了下来，画面明显更锐。六张真实动图实测误差降到原来的 1/8 ~ 1/2。代价是成品文件变成 **2.1~2.6 倍**（体积侧另有三笔改动先抵掉了一部分：行合并改取真实像素行、折叠相邻重复帧、写法紧凑化）
 
 **English**
 
@@ -18,9 +18,9 @@
 
 - **The page title claimed "pure CSS" even for inline-SVG output**: with `render_backend` set to `svg`, the artifact still labelled itself "羽画 · 纯 CSS 描摹" in the browser tab and the screen-reader label. The title now follows the actual dialect — SVG output reads "羽画 · SVG 描摹", and pure-CSS output is unchanged
 
-##### ⚡ Performance
+##### 🎨 Image quality
 
-- **Animation output is 13–19% smaller**: the default scanline style used to average every two rows into one — averaging stacks both rows' colour-band edges together and writes *more*, not less. It now takes a real pixel row and folds repeated adjacent frames. Measured on six real GIFs: **13–19% smaller**, with differences limited to one-pixel hairlines along contours
+- **Animation tracing now favours quality over size**: no more averaging every two rows into one (full row-by-row), colour precision raised from 16-step to 8-step, and the de-dithering filter is gone — the dither texture and fine detail it used to smooth away are kept, so the picture is visibly sharper. Measured on six real GIFs: error is down to **1/8 ~ 1/2** of before. The cost is a **2.1–2.6× larger** file (three size-side changes already offset part of it: real pixel rows instead of averaging, repeated adjacent frames folded, tighter literals)
 
 #### v0.3.1
 

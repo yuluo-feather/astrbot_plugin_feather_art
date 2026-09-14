@@ -1,8 +1,13 @@
 """扫描线动画渲染：每行 = 一条横向色带渐变（linear-gradient 硬色带）。
 
 动画从「实例矢量轨迹」换成「行渐变扫描线」：逐像素还原、100% 覆盖、
-任意缩放无缝隙、帧间稳定不闪。代价：动图的 dithering 颗粒被中值滤波
-抹平、颜色 16 步收敛——纹理保真让位于稳定（2026-09-08 实测拍板）。
+任意缩放无缝隙、帧间稳定不闪。
+
+保真档（2026-09-14 拍板「画质优先，体积无所谓」后定）：ROW_PX=1 逐行不
+合并、QUANT_STEP=8、DENOISE_KERNEL=1 不做中值滤波——抖动颗粒不再被抹平。
+三张真实动图实测关键区 MAE 从 7.5/9.6/9.7 降到 1.3/5.9/1.2，体积 2.1~2.6 倍。
+**SEG_TOL 不能跟着调小**：它是体积的非线性炸弹——ab7479 上 20→12 段/行
+230 → 755、体积 +543%，而画质只多换一点点；保持不变是量出来的最优性价比。
 
 结构：
 - 静止行 → div.shape（矩形 inline clip-path + 行渐变背景；audit 要求
@@ -11,13 +16,12 @@
 - 行高 = 行距% + OVERLAP_PCT：亚像素重叠，根治「非整数设备缩放下的
   取整缝隙」（Windows 125%/文本缩放场景实测 0 白线）。
 
-字节账（2026-09-14 六张真实动图实测）：体积 97~99.6% 落在动态行的
-@keyframes 里，静止行侧只占 0~0.7%——且六张里三张静止行为 0（动图上
-连背景都在动）。所以省字节的杠杆只有「行数 / 帧数 / 段数」三个，本模块
-管其中两个：行合并取代表行（不取均值）与相邻帧 stop 折叠，都是零语义
-改动（浏览器逐像素比对验收）。注意：**任何按帧变化的自适应参数都会污染
-changed 判定**——两帧逐像素相同时，quant 16 vs 24 会让 46/60~169/169 行的
-渐变串不同，静止区被整块拖进 keyframes，体积反向爆炸。
+三笔省字节的改动（动图线专用的 2026-09-14 那轮）：行合并取真实像素行而不是
+均值（均值把两行色带边界求并集，段数反涨 13~24%）、相邻帧 stop 折叠、
+紧凑写法（色值三位缩写 + 帧百分比去尾零，浏览器逐像素验收差 0）。
+**注意：任何按帧变化的自适应参数都会污染 changed 判定**——两帧逐像素相同时，
+quant 16 vs 24 会让 46/60~169/169 行的渐变串不同，静止区被整块拖进 keyframes，
+体积反向爆炸。
 """
 
 from __future__ import annotations
@@ -32,11 +36,11 @@ import numpy as np
 from .contract import FALLSAFE_MESSAGE, BudgetExceeded
 from .geometry import hex_color
 
-DENOISE_KERNEL = 3   # 去抖动中值滤波核
-QUANT_STEP = 16      # 颜色量化步长（跨帧收敛，帧间色不漂移）
-SEG_TOL = 20         # 行分段色差阈值（单通道）
-ROW_PX = 2           # 行合并：原图纵向 ROW_PX 像素并为一行
-MERGE_MODE = "take"  # 行合并取法："take"=取区间中间那一行，"mean"=均值
+DENOISE_KERNEL = 1   # 去抖动中值滤波核（1 = 不滤波，保住 dithering 颗粒）
+QUANT_STEP = 8       # 颜色量化步长（跨帧收敛，帧间色不漂移）
+SEG_TOL = 20         # 行分段色差阈值（单通道）——调小是体积的非线性炸弹
+ROW_PX = 1           # 行合并：原图纵向 ROW_PX 像素并为一行（1 = 逐行还原）
+MERGE_MODE = "take"  # 行合并取法："take"=取区间首行那一行，"mean"=均值
 OVERLAP_PCT = 0.17   # 行高超出行距的百分比（防取整缝隙）
 RECT_POLY = "polygon(0 0,100% 0,100% 100%,0 100%)"
 
@@ -61,8 +65,12 @@ def _bg_color(value) -> str:
 
 
 def prepare_frame(frame: np.ndarray) -> np.ndarray:
-    """单帧预处理：中值去抖动 → 16 步量化（uint8）。"""
-    blurred = cv2.medianBlur(frame, DENOISE_KERNEL)
+    """单帧预处理：可选去抖动 → QUANT_STEP 步量化（uint8）。
+
+    DENOISE_KERNEL ≤ 1 时完全不滤——中值滤波会抹平动图的 dithering 颗粒，
+    那是「纹理保真」，画质优先档不拿它换体积。
+    """
+    blurred = frame if DENOISE_KERNEL <= 1 else cv2.medianBlur(frame, DENOISE_KERNEL)
     quant = ((blurred.astype(np.int16) + QUANT_STEP // 2)
              // QUANT_STEP * QUANT_STEP)
     return quant.clip(0, 255).astype(np.uint8)

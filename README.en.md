@@ -54,7 +54,7 @@ An AstrBot plugin that **traces an image offline** into a single-file illustrati
 | sketch · 速写 | 768 | 96 | 0.38 | 2 | light & fast; icons, memes, stamps |
 | motion · 动画 | 512 | 96 | 0.36 | 2 | animated GIF / WebP: multi-frame tracing, fast & stable |
 | freehand · 写意 (default) | 1200 | 160 | 0.30 | 3 | daily illustrations, balanced |
-| finebrush · 工笔 | 1600 | 256 | 0.24 | 4 | detail first; larger & slower |
+| finebrush · 工笔 | 2000 | 256 | 0.24 | 4 | detail first; larger & slower |
 
 ## 🖊️ Usage
 
@@ -214,6 +214,8 @@ tests/                # pytest suite (grows with development)
 #### Unreleased
 
 - Fix: with the inline-SVG dialect selected, the artifact no longer labels itself "pure CSS" in the browser tab and the screen-reader label — the title follows the actual dialect
+- Quality: animation tracing now favours quality over size — full row-by-row, higher colour precision, no de-dithering; measured error down to 1/8 ~ 1/2 of before, at 2.1–2.6× the file size
+- Quality: the finebrush preset traces wider (max width 1600 → 2000), so wide images keep more texture and gradient detail (measured: error down 5%–10%, output 13%–26% larger)
 
 #### v0.3.1
 

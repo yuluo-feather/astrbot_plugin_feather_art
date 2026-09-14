@@ -25,7 +25,7 @@ class Preset(NamedTuple):
 PRESETS: dict[str, Preset] = {
     "sketch": Preset("sketch", "速写", 768, 96, 0.38, 2, "快而轻：小图、表情包、印章"),
     "freehand": Preset("freehand", "写意", 1200, 160, 0.30, 3, "均衡之选：日常插画"),
-    "finebrush": Preset("finebrush", "工笔", 1600, 256, 0.24, 4, "精细复刻：细节优先"),
+    "finebrush": Preset("finebrush", "工笔", 2000, 256, 0.24, 4, "精细复刻：细节优先"),
     "motion": Preset("motion", "动画", 512, 96, 0.36, 2, "动图档：多帧描摹，快而稳"),
 }
 

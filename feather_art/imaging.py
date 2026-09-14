@@ -1,7 +1,7 @@
 """图片装载：EXIF 转正、透明合成、限宽缩放与双边滤波。
 
 进料统一是字节流（插件场景：消息里抓下来的图），文件路径也认。
-出来的就是「描摹参考位图」——底色调好、最长边限住、噪点滤掉，
+出来的就是「描摹参考位图」——底色调好、宽度限住、噪点滤掉，
 RGB uint8 数组，量化与轮廓直接拿去用。
 """
 
@@ -48,7 +48,8 @@ def load_image(source: SourceLike, max_width: int, matte: tuple[int, int, int]) 
     返回 (参考数组 HxWx3 uint8, 原始尺寸 (w, h))。
     - 动图/多帧直接赶走，要画动画走 decode_frames；
     - EXIF 方向先转正，透明像素按 matte 合成（合成前保持 RGBA）再说话；
-    - 最长边受 max_width 与 2*max_width 双重约束，缩放用 LANCZOS；
+    - 宽度受 max_width 约束，长边另受 2*max_width 死限（防超高/超宽图绕开单轴），
+      缩放用 LANCZOS；
     - 尺寸不小于 3 的图做两轮轻量双边滤波，把扫描噪声和 JPEG 蚊噪压下去。
     """
     handle = Image.open(BytesIO(source)) if isinstance(source, (bytes, bytearray)) else Image.open(Path(source))

@@ -52,11 +52,39 @@ HELP_TEXT = (
     "[羽画 + 发一张图] 描摹成纯 HTML+CSS 插画（默认写意档）\n"
     "档位词随写随认：/羽画 工笔、/羽画 速写 图片，顺序无所谓，图以附件为准\n"
     "工笔最细最慢，速写最快最轻，写意是日常均衡之选。\n"
-    "发 GIF / 动图自动描成 CSS 动画（动画档），浏览器直接播放。"
+    "发 GIF / 动图自动描成 CSS 动画（动画档），浏览器直接播放。\n"
+    "配置里可把渲染后端切成内联 SVG 方言（体积约省一半）。"
 )
 
 
-@register("feather_art", "羽落", "羽画：把图片离线描摹成纯 HTML+CSS 单文件插画，无图片无脚本无外链", VERSION)
+class _Delivery:
+    """两种入口的交付差异，集中在这一处。
+
+    命令入口 yield chain_result，框架会把它落进会话；工具入口的返回值是给上层
+    LLM 的收尾提示，成品得自己 send 出去。差别就这一处——集中之后
+    _paint_common 里不再到处 if via_tool，将来多一个入口（比如 WebUI 单图
+    预览）也只需在这里加一支。
+    """
+
+    def __init__(self, event: AstrMessageEvent, via_tool: bool):
+        self._event = event
+        self._via_tool = via_tool
+
+    def text(self, note: str):
+        """一句人话：命令入口落会话，工具入口交给上层 LLM 收尾。"""
+        if self._via_tool:
+            return note
+        return self._event.chain_result([Plain(note)])
+
+    async def artifact(self, chain):
+        """成品：工具入口先推给用户，再回一句收尾提示给上层 LLM。"""
+        if self._via_tool:
+            await self._event.send(MessageChain(chain=list(chain)))
+            return "已为用户完成描摹并发送 HTML 文件。请自然收尾一句（如询问是否满意）。"
+        return self._event.chain_result(chain)
+
+
+@register("feather_art", "羽落", "羽画：把图片离线描摹成单文件插画，默认纯 HTML+CSS、可选内联 SVG 方言，无图片无脚本无外链", VERSION)
 class FeatherArtPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -89,7 +117,7 @@ class FeatherArtPlugin(Star):
             pass
 
     async def initialize(self):
-        logger.info("羽画 v%s · 纯 CSS 描摹就位，图来了就开工。", VERSION)
+        logger.info("羽画 v%s · 描摹就位，图来了就开工。", VERSION)
 
     # ---------- 图片获取 ----------
 
@@ -143,36 +171,26 @@ class FeatherArtPlugin(Star):
     # ---------- 公共流程 ----------
 
     async def _paint_common(self, event: AstrMessageEvent, text: str, *, via_tool: bool):
-        """命令与工具共用的描摹编排；产出 chain/MessageChain 或字符串。"""
+        """命令与工具共用的描摹编排；交付差异交给 _Delivery。"""
+        delivery = _Delivery(event, via_tool)
         if not _DEPS_OK:
-            note = f"羽画启动时缺依赖（{_DEP_ERROR}），请先执行 pip install -r requirements.txt。"
-            if via_tool:
-                yield note
-                return
-            yield event.chain_result([Plain(note)])
+            yield delivery.text(
+                f"羽画启动时缺依赖（{_DEP_ERROR}），请先执行 pip install -r requirements.txt。")
             return
 
         preset_key, fit_mb, sample = parse_options(
             text, str(self.settings.get("preset", "freehand")),
-            float(self.settings.get("fit_mb", 40.0)))
+            float(self.settings.get("fit_mb", DEFAULTS["fit_mb"])))
 
         img_path = await self._grab_image(event) or self._recent_image(event)
         if img_path is None:
-            note = "没收到图呀。先发一张图，再：/羽画 工笔（档位顺序随写随认）"
-            if via_tool:
-                yield note
-                return
-            yield event.chain_result([Plain(note)])
+            yield delivery.text("没收到图呀。先发一张图，再：/羽画 工笔（档位顺序随写随认）")
             return
 
         uid = str(event.get_sender_id())
         ok, wait = await self.limiter.acquire(uid)
         if not ok:
-            note = f"我刚画完一幅，手速慢点～ 再等 {wait:.0f} 秒就能下单。"
-            if via_tool:
-                yield note
-                return
-            yield event.chain_result([Plain(note)])
+            yield delivery.text(f"我刚画完一幅，手速慢点～ 再等 {wait:.0f} 秒就能下单。")
             return
 
         try:
@@ -182,10 +200,7 @@ class FeatherArtPlugin(Star):
             if frames > 1:
                 hint = animation_length_hint(data, frames, text)
                 if hint:
-                    if via_tool:
-                        yield hint
-                    else:
-                        yield event.chain_result([Plain(hint)])
+                    yield delivery.text(hint)
                     return
             out = self.work_dir / f"feather_{int(time.time())}_{secrets.token_hex(4)}.html"
             report_path = self.work_dir / f"feather_{int(time.time())}_{secrets.token_hex(4)}.json"
@@ -197,7 +212,7 @@ class FeatherArtPlugin(Star):
                 # render_backend 只为过 TraceConfig 的注册校验（动画不走静态
                 # 后端），score 也没有相似度计算可喂——别把它们当动画开关。
                 traced = TraceConfig(
-                    max_mb=float(self.settings.get("max_mb", 64.0)),
+                    max_mb=float(self.settings.get("max_mb", DEFAULTS["max_mb"])),
                     fit_mb=0.0,
                     score=False,
                 )
@@ -216,7 +231,7 @@ class FeatherArtPlugin(Star):
                 preset_name = resolve(preset_key).name
                 await event.send(MessageChain([Plain(f"收到 {fmt} {w}×{h}，开始描摹（{preset_name}档）……")]))
                 traced = TraceConfig(
-                    max_mb=float(self.settings.get("max_mb", 64.0)),
+                    max_mb=float(self.settings.get("max_mb", DEFAULTS["max_mb"])),
                     fit_mb=fit_mb,
                     score=bool(self.settings.get("score", True)),
                     render_backend=str(self.settings.get("render_backend", "css") or "css"),
@@ -225,11 +240,7 @@ class FeatherArtPlugin(Star):
                     trace_image, data, preset_key, out,
                     config=traced, force=True, report_path=report_path)
             chain = build_chain(report, out)
-            if via_tool:
-                await event.send(MessageChain(chain=list(chain)))
-                yield "已为用户完成描摹并发送 HTML 文件。请自然收尾一句（如询问是否满意）。"
-            else:
-                yield event.chain_result(chain)
+            yield await delivery.artifact(chain)
         except (TraceError, ValueError) as exc:
             detail = user_fault(exc)
             if detail is None:
@@ -239,16 +250,9 @@ class FeatherArtPlugin(Star):
             else:
                 note = f"这稿画得不太顺：{detail}"
                 logger.warning("[羽画][%s] 用户可见失败: %s", uid, detail)
-            if via_tool:
-                yield note
-                return
-            yield event.chain_result([Plain(note)])
+            yield delivery.text(note)
         except Exception as exc:
             logger.error("描摹失败: %s", exc, exc_info=True)
-            note = "描摹断了。机器今天手抖，换个时候再试。"
-            if via_tool:
-                yield note
-                return
-            yield event.chain_result([Plain(note)])
+            yield delivery.text("描摹断了。机器今天手抖，换个时候再试。")
         finally:
             self.limiter.release()

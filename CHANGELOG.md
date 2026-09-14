@@ -7,6 +7,9 @@
 ##### 🐛 修复
 
 - **选中内联 SVG 方言后，成品的页签还自称「纯 CSS」**：配置切到 `svg` 描出来的文档，在浏览器页签和朗读标签上写的仍是「羽画 · 纯 CSS 描摹」。现在标题跟着实际方言走——SVG 稿自称「羽画 · SVG 描摹」，纯 CSS 稿一字未变
+- **关不掉的开关现在真的能关了**：自然语言入口（`llm_tool`）与相似度评分（`score`）默认是开的，而在 WebUI 关掉它们时回传的是字符串 `"false"`——旧实现会静默失败、仍旧按「开」处理，用户以为关了其实没关。现在 `"false"` / `"0"` / `"no"` / `"off"` 都能真的关掉
+- **内部故障文案不再漏给用户**：来源判定原先靠「消息是不是中文开头」猜，于是「文件已存在：xxx.html」这类内部话术会原样透给用户，而写成「[羽画] 图片太大」的用户文案反倒被当内部故障吞掉、退成「机器今天手抖」。现在由异常类型说了算：只有明确写给用户看的文案才会透出
+- **帮助文本与启动日志跟上双方言**：帮助里补上「配置里可把渲染后端切成内联 SVG 方言」，启动日志也不再自称「纯 CSS 描摹就位」——内联 SVG 自 v0.3.0 起就是一等公民
 
 ##### 🎨 画质
 
@@ -20,6 +23,9 @@
 ##### 🐛 Fixes
 
 - **The page title claimed "pure CSS" even for inline-SVG output**: with `render_backend` set to `svg`, the artifact still labelled itself "羽画 · 纯 CSS 描摹" in the browser tab and the screen-reader label. The title now follows the actual dialect — SVG output reads "羽画 · SVG 描摹", and pure-CSS output is unchanged
+- **Switches you turn off in the WebUI now really stay off**: the natural-language entry (`llm_tool`) and the similarity score (`score`) default to on, and turning them off in the WebUI sends the string `"false"` — the old code failed silently and kept treating them as on. `"false"` / `"0"` / `"no"` / `"off"` now actually switch them off
+- **Internal failure text no longer reaches the user**: the split used to be guessed from "does the message start with a non-ASCII character", so internal phrasing like "文件已存在：xxx.html" leaked to users, while a message written as "[羽画] 图片太大" was swallowed as an internal fault and degraded to "the machine slipped". The exception type now decides: only text explicitly written for users is shown
+- **Help text and the startup log catch up with the two dialects**: the help now notes that the render backend can be switched to inline SVG, and the startup log no longer calls itself "pure CSS" — inline SVG has been a first-class dialect since v0.3.0
 
 ##### 🎨 Image quality
 

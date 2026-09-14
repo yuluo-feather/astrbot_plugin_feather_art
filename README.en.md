@@ -215,7 +215,7 @@ tests/                # pytest suite (grows with development)
 
 - Fix: with the inline-SVG dialect selected, the artifact no longer labels itself "pure CSS" in the browser tab and the screen-reader label — the title follows the actual dialect
 - Quality: animation tracing now favours quality over size — full row-by-row, higher colour precision, no de-dithering; measured error down to 1/8 ~ 1/2 of before, at 2.1–2.6× the file size
-- Quality: the finebrush preset traces wider (max width 1600 → 2000), so wide images keep more texture and gradient detail (measured: error down 5%–10%, output 13%–26% larger)
+- Quality: the finebrush preset traces wider (max width 1600 → 3600), so wide images keep more texture and gradient detail (measured: error down 13.7% at the original size, output 3.0× larger)
 - Quality: looser size budgets — output target 40 → 64 MiB, hard cap 64 → 128 MiB, input tolerance 20 → 64 MiB
 
 #### v0.3.1

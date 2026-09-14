@@ -244,7 +244,7 @@ def test_preset_parameters_are_locked():
     分开锁的两种：
     - freehand 是基线红线的基准档（tests/test_render_baseline.py），
       它一动基线就整体作废，所以逐值锁死；
-    - finebrush 2026-09-14 提宽 1600 → 2000，只动宽度、判据一律不动
+    - finebrush 2026-09-14 提宽 1600 → 2000 → 3600，只动宽度、判据一律不动
       （实测像素 ×1.56 → 字节 ×1.26、MAE −0.50；同步挪阈值反而画质更差）。
 
     另加一条范围：档位宽度必须落在 WIDTH_LIMITS 内，否则 presets 的声明
@@ -258,7 +258,7 @@ def test_preset_parameters_are_locked():
         == (1600, 160, 0.30, 3)
     finebrush = presets.PRESETS["finebrush"]
     assert (finebrush.max_width, finebrush.colors, finebrush.epsilon, finebrush.passes) \
-        == (2000, 256, 0.24, 4)
+        == (3600, 256, 0.24, 4)
     for preset in presets.PRESETS.values():
         assert presets.WIDTH_LIMITS[0] <= preset.max_width <= presets.WIDTH_LIMITS[1], preset.key
 

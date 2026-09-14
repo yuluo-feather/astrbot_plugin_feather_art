@@ -11,7 +11,7 @@
 ##### 🎨 画质
 
 - **动图描摹改成画质优先**：不再把每两行压成一行（逐行还原）、颜色精度从 16 步提到 8 步，也不再做去抖动滤波——原本被抹平的抖动颗粒与细节都留了下来，画面明显更锐。六张真实动图实测误差降到原来的 1/8 ~ 1/2。代价是成品文件变成 **2.1~2.6 倍**（体积侧另有三笔改动先抵掉了一部分：行合并改取真实像素行、折叠相邻重复帧、写法紧凑化）
-- **工笔档描得更细**：描摹宽度上限从 1600 提到 2000，宽图不再被提前缩掉，纹理与渐变的层次更贴原图（合成大图与两张真实截图实测：误差降 5% ~ 10%，成品大 13% ~ 26%）。宽度不到 1600 的图完全不受影响
+- **工笔档描得更细**：描摹宽度上限从 1600 一路提到 3600，宽图不再被提前缩掉，纹理与渐变的层次更贴原图（真实插画 3791×2000 实测：成品放回原图尺寸后与原图的误差降 13.7%，成品大 3.0 倍；4800 宽的摄影图同步受益）。宽度不到 1600 的图完全不受影响
 - **速写与写意档也描得更细**：速写宽度上限 768 → 1152、写意 1200 → 1600，小图与日常插画不再被提前缩掉。三张真实插画实测（成品放回原图尺寸后与原图比）：速写误差降 8% ~ 16%、写意降 7% ~ 11%，成品大 98% ~ 126% 与 67% ~ 75%。宽度不到 768 / 1200 的图完全不受影响
 - **体积预算放宽**：输出目标 40 → 64 MiB、硬上限 64 → 128 MiB、输入体积宽容 20 → 64 MiB。宽图与高保真档不再被预算提前削掉
 
@@ -24,7 +24,7 @@
 ##### 🎨 Image quality
 
 - **Animation tracing now favours quality over size**: no more averaging every two rows into one (full row-by-row), colour precision raised from 16-step to 8-step, and the de-dithering filter is gone — the dither texture and fine detail it used to smooth away are kept, so the picture is visibly sharper. Measured on six real GIFs: error is down to **1/8 ~ 1/2** of before. The cost is a **2.1–2.6× larger** file (three size-side changes already offset part of it: real pixel rows instead of averaging, repeated adjacent frames folded, tighter literals)
-- **The finebrush preset traces finer**: its max tracing width goes 1600 → 2000, so wide images are no longer shrunk as aggressively and texture / gradient detail sits closer to the original (measured on a synthetic large image and two real screenshots: error down 5%–10%, output 13%–26% larger). Images narrower than 1600 px are unaffected
+- **The finebrush preset traces finer**: its max tracing width goes 1600 → 3600, so wide images are no longer shrunk as aggressively and texture / gradient detail sits closer to the original (measured on a real 3791×2000 illustration: artifact scaled back to the original size and compared against it, error down 13.7%, output 3.0× larger; a 4800-wide photo benefits too). Images narrower than 1600 px are unaffected
 - **The sketch and freehand presets trace finer too**: their max tracing widths go 768 → 1152 and 1200 → 1600, so small images and daily illustrations are no longer shrunk as aggressively. Measured on three real illustrations (artifact scaled back to the original size and compared against it): error down 8%–16% for sketch and 7%–11% for freehand, output 98%–126% and 67%–75% larger. Images narrower than 768 / 1200 px are unaffected
 - **Looser size budgets**: output target 40 → 64 MiB, hard cap 64 → 128 MiB, input tolerance 20 → 64 MiB. Wide images and the fine-detail preset are no longer trimmed early by the budget
 

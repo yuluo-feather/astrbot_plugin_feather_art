@@ -35,9 +35,6 @@ DEFAULT_KEY = "freehand"
 WIDTH_LIMITS = (1, 2400)
 COLORS_LIMITS = (2, 256)
 
-# 输出体积预算（MiB）；超过预算时若开启 fit 则按阶梯降档重试
-DEFAULT_MAX_MB = 64.0
-
 
 def resolve(key: str) -> Preset:
     """按 key（速写/写意/工笔或英文）取档；未知档回退默认写意。"""

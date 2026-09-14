@@ -40,7 +40,7 @@ class TraceConfig:
     # 文档标题（同时是页签与朗读标签）。留空 = 跟着渲染后端自称走，
     # 见 backends.backend_title——方言切换时标题得跟着换，不然 SVG 稿自称纯 CSS
     title: str = ""
-    max_mb: float = 64.0
+    max_mb: float = 128.0
     fit_mb: float = 0.0      # 0 = 不启用自动降档
     score: bool = True
     gradients: bool = True
@@ -56,7 +56,7 @@ class TraceConfig:
         规则：转 float 失败回默认；负数钳回 0（0 的语义被上层尊重，
         立即熔断出中文文案，而不是 TypeError）。
         """
-        for name, default in (("max_mb", 64.0), ("fit_mb", 40.0)):
+        for name, default in (("max_mb", 128.0), ("fit_mb", 64.0)):
             value = getattr(self, name)
             try:
                 value = float(value)

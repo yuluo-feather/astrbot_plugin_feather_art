@@ -2,7 +2,7 @@
 
 import pytest
 
-from data.plugins.astrbot_plugin_feather_art import service
+from data.plugins.astrbot_plugin_feather_art import config, service
 import util
 
 
@@ -165,7 +165,8 @@ def test_fit_ladder_dedups_small_palette():
 def test_traceconfig_guards_bad_values(tmp_path):
     """渗透发现：畸形 fit/max 值不得穿透到算数层（TypeError → 中文熔断）。"""
     cfg = service.TraceConfig(fit_mb="abc", max_mb=-1.0)
-    assert cfg.fit_mb == 40.0   # 转 float 失败回默认
+    # 回落目标跟着 config.DEFAULTS 走：两处各写各的，改默认值时必断链
+    assert cfg.fit_mb == config.DEFAULTS["fit_mb"]
     assert cfg.max_mb == 0.0    # 负数钳回 0
     with pytest.raises(service.TraceError):
         service.trace_image(

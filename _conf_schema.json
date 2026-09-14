@@ -19,13 +19,13 @@
       "fit_mb": {
         "type": "float",
         "description": "输出体积目标（MiB）",
-        "default": 40,
+        "default": 64,
         "hint": "超过该体积自动降档（先降颜色、后降宽度）直到装得下；0 表示不自动降档。"
       },
       "max_mb": {
         "type": "float",
         "description": "输出体积硬上限（MiB）",
-        "default": 64,
+        "default": 128,
         "hint": "最终输出超过该值即失败，防止异常大文件。"
       },
       "score": {
@@ -91,7 +91,7 @@
       "max_image_mb": {
         "type": "float",
         "description": "输入图片体积上限（MiB）",
-        "default": 20
+        "default": 64
       },
       "max_pixels": {
         "type": "int",

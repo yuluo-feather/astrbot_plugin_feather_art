@@ -31,8 +31,9 @@ _GROUPED_KEYS = {
 
 DEFAULTS = {
     "preset": "freehand",
-    "fit_mb": 40.0,
-    "max_mb": 64.0,
+    # 体积三件套（2026-09-14 放宽）：给宽图与高保真档留出空间
+    "fit_mb": 64.0,
+    "max_mb": 128.0,
     "score": True,
     "motion_sample": 0,
     "animation_style": "scanline",
@@ -40,7 +41,7 @@ DEFAULTS = {
     "concurrent": 1,
     "cooldown": 60,
     "llm_tool": True,
-    "max_image_mb": 20.0,
+    "max_image_mb": 64.0,
     "max_pixels": 40_000_000,
 }
 

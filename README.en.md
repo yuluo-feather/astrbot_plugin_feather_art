@@ -51,9 +51,9 @@ An AstrBot plugin that **traces an image offline** into a single-file illustrati
 
 | Preset | Max width | Palette | Epsilon | Merge passes | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
-| sketch · 速写 | 768 | 96 | 0.38 | 2 | light & fast; icons, memes, stamps |
+| sketch · 速写 | 1152 | 96 | 0.38 | 2 | light & fast; icons, memes, stamps |
 | motion · 动画 | 512 | 96 | 0.36 | 2 | animated GIF / WebP: multi-frame tracing, fast & stable |
-| freehand · 写意 (default) | 1200 | 160 | 0.30 | 3 | daily illustrations, balanced |
+| freehand · 写意 (default) | 1600 | 160 | 0.30 | 3 | daily illustrations, balanced |
 | finebrush · 工笔 | 2000 | 256 | 0.24 | 4 | detail first; larger & slower |
 
 ## 🖊️ Usage

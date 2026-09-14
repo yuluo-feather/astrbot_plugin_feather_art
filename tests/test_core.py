@@ -250,9 +250,12 @@ def test_preset_parameters_are_locked():
     另加一条范围：档位宽度必须落在 WIDTH_LIMITS 内，否则 presets 的声明
     与 load_image 的死限会各说各话。
     """
+    sketch = presets.PRESETS["sketch"]
+    assert (sketch.max_width, sketch.colors, sketch.epsilon, sketch.passes) \
+        == (1152, 96, 0.38, 2)
     freehand = presets.PRESETS["freehand"]
     assert (freehand.max_width, freehand.colors, freehand.epsilon, freehand.passes) \
-        == (1200, 160, 0.30, 3)
+        == (1600, 160, 0.30, 3)
     finebrush = presets.PRESETS["finebrush"]
     assert (finebrush.max_width, finebrush.colors, finebrush.epsilon, finebrush.passes) \
         == (2000, 256, 0.24, 4)

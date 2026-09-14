@@ -136,8 +136,8 @@ Configurable from the AstrBot plugin panel:
 | Key | Default | Description |
 |-----|---------|-------------|
 | `preset` | `freehand` | default preset (sketch / freehand / finebrush; the motion preset is picked automatically for animated input) |
-| `fit_mb` | `40` | output volume target (MiB), 2% tolerance; `0` = no auto stepping |
-| `max_mb` | `64` | hard output size cap (MiB) |
+| `fit_mb` | `64` | output volume target (MiB), 2% tolerance; `0` = no auto stepping |
+| `max_mb` | `128` | hard output size cap (MiB) |
 | `score` | `true` | compute the offline MAE similarity score |
 | `motion_sample` | `0` | default animation sampling override: `0` = adaptive to duration (48-frame cap); 8–96 = fixed frame count |
 | `animation_style` | `scanline` | animation rendering style: scanline (default; per-pixel, seamless at any zoom) | vector (legacy pipeline, supports tween) |
@@ -145,7 +145,7 @@ Configurable from the AstrBot plugin panel:
 | `concurrent` | `1` | simultaneous trace jobs |
 | `cooldown` | `60` | per-user cooldown between traces (seconds) |
 | `llm_tool` | `true` | natural-language entry switch |
-| `max_image_mb` | `20` | input image size cap |
+| `max_image_mb` | `64` | input image size cap |
 | `max_pixels` | `40000000` | input pixel cap (decompression-bomb guard) |
 
 ## ⚗️ How it works

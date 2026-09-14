@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.1-f8a5c2" alt="v0.3.1"/>
+  <img src="https://img.shields.io/badge/version-v0.3.2-f8a5c2" alt="v0.3.2"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -211,13 +211,16 @@ tests/                # pytest suite (grows with development)
 
 ## 📜 Changelog
 
-#### Unreleased
+#### v0.3.2
 
 - Fix: with the inline-SVG dialect selected, the artifact no longer labels itself "pure CSS" in the browser tab and the screen-reader label — the title follows the actual dialect
 - Quality: animation tracing now favours quality over size — full row-by-row, higher colour precision, no de-dithering; measured error down to 1/8 ~ 1/2 of before, at 2.1–2.6× the file size
 - Quality: the finebrush preset traces wider (max width 1600 → 3600), so wide images keep more texture and gradient detail (measured: error down 13.7% at the original size, output 3.0× larger)
 - Quality: the sketch and freehand presets also trace wider — max width 768 → 1152 and 1200 → 1600, so small images and everyday illustrations are no longer shrunk ahead of time (measured: error down 8–16% and 7–11% at the original size)
 - Quality: looser size budgets — output target 40 → 64 MiB, hard cap 64 → 128 MiB, input tolerance 20 → 64 MiB
+- Fix: switching the natural-language entry or the similarity score off in the WebUI used to be a no-op — the string `"false"` was swallowed silently; it really switches them off now
+- Fix: internal failure text no longer reaches users — phrasing such as "file already exists: xxx.html" stays internal, and text written for users is no longer mistaken for an internal fault
+- Docs: the help text and the startup log now mention the inline-SVG dialect (first-class since v0.3.0)
 
 #### v0.3.1
 

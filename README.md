@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.1-f8a5c2" alt="v0.3.1"/>
+  <img src="https://img.shields.io/badge/version-v0.3.2-f8a5c2" alt="v0.3.2"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -211,13 +211,16 @@ tests/                # pytest 用例（随开发增长）
 
 ## 📜 更新记录
 
-#### Unreleased
+#### v0.3.2
 
 - 修复：选中内联 SVG 方言时，成品的页签与朗读标签不再自称「纯 CSS」，改跟实际方言走
 - 画质：动图描摹改成画质优先——逐行还原、颜色精度提升、不再去抖动，实测误差降到原来的 1/8 ~ 1/2，代价是成品变成 2.1~2.6 倍
 - 画质：工笔档描摹宽度上限 1600 → 3600，宽图不再被提前缩掉，细节更贴原图（实测放回原图尺寸后误差降 13.7%，成品大 3.0 倍）
 - 画质：速写与写意档也描得更细——速写宽度上限 768 → 1152、写意 1200 → 1600，小图与日常插画不再被提前缩掉（实测放回原图尺寸后误差降 8% ~ 16% 与 7% ~ 11%）
 - 画质：体积预算放宽——输出目标 40 → 64 MiB、硬上限 64 → 128 MiB、输入体积宽容 20 → 64 MiB
+- 修复：WebUI 里关掉「自然语言入口」与「相似度评分」以前是哑的——回传的字符串 `"false"` 被静默吞掉，开关看着关了其实还开着；现在真的能关
+- 修复：内部故障文案不再漏给用户——「文件已存在：xxx.html」这类内部话术不会再原样透出，写给用户看的文案也不会再被当成内部故障吞掉
+- 文档：帮助文本与启动日志补上内联 SVG 方言（自 v0.3.0 起它就是一等公民）
 
 #### v0.3.1
 

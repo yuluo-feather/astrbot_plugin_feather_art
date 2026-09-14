@@ -7,7 +7,6 @@
 ##### 🐛 修复
 
 - **选中内联 SVG 方言后，成品的页签还自称「纯 CSS」**：配置切到 `svg` 描出来的文档，在浏览器页签和朗读标签上写的仍是「羽画 · 纯 CSS 描摹」。现在标题跟着实际方言走——SVG 稿自称「羽画 · SVG 描摹」，纯 CSS 稿一字未变
-- **深底上的浅色细节不再消失**：与底色相近的色层以前整层不画（「白底图上白的东西不用画」的老办法），结果深色区域里的白点、白字被后画的深色盖没。现在这层照画，并排到绘制序列的最末。四张真实截图实测误差降 0.17 ~ 0.25、成品只大 0.2%；白底图不受影响
 
 ##### 🎨 画质
 
@@ -19,7 +18,6 @@
 ##### 🐛 Fixes
 
 - **The page title claimed "pure CSS" even for inline-SVG output**: with `render_backend` set to `svg`, the artifact still labelled itself "羽画 · 纯 CSS 描摹" in the browser tab and the screen-reader label. The title now follows the actual dialect — SVG output reads "羽画 · SVG 描摹", and pure-CSS output is unchanged
-- **Light detail no longer vanishes on dark grounds**: colour layers close to the matte used to be skipped entirely — the old "on a white ground you needn't draw white" saving — which buried white dots and thin light strokes under the dark shapes drawn after them. Those layers are drawn now, and drawn last. Across four real screenshots error fell 0.17–0.25 while output grew just 0.2%; white-background images are unaffected
 
 ##### 🎨 Image quality
 

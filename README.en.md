@@ -214,7 +214,6 @@ tests/                # pytest suite (grows with development)
 #### Unreleased
 
 - Fix: with the inline-SVG dialect selected, the artifact no longer labels itself "pure CSS" in the browser tab and the screen-reader label — the title follows the actual dialect
-- Fix: colour layers matching the matte used to be skipped outright, burying white dots and light strokes on dark grounds; they are drawn now, and drawn last (four real screenshots: error down 0.17–0.25, output up just 0.2%)
 - Quality: animation tracing now favours quality over size — full row-by-row, higher colour precision, no de-dithering; measured error down to 1/8 ~ 1/2 of before, at 2.1–2.6× the file size
 - Quality: the finebrush preset traces wider (max width 1600 → 2000), so wide images keep more texture and gradient detail (measured: error down 5%–10%, output 13%–26% larger)
 

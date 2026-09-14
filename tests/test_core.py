@@ -9,7 +9,6 @@ from data.plugins.astrbot_plugin_feather_art.feather_art import (
     paint,
     presets,
     quantize,
-    regions,
 )
 import util
 
@@ -259,46 +258,6 @@ def test_preset_parameters_are_locked():
         == (2000, 256, 0.24, 4)
     for preset in presets.PRESETS.values():
         assert presets.WIDTH_LIMITS[0] <= preset.max_width <= presets.WIDTH_LIMITS[1], preset.key
-
-
-# ---------- 近底色层：绘制顺序，而不是「不必画」 ----------
-
-def test_matte_layers_draw_last():
-    """与底色同色的色层必须排到绘制序列末尾。
-
-    底色是白的不代表那块白是背景。深色区域里的白点、白字与底色同色，
-    按亮度垫底就会被后画的深色层盖没——2026-09-14 实测四张真实截图，
-    挪到末尾后 MAE 降 0.17~0.25、字节只涨 0.1~1.1%。
-    不传背景时维持纯亮度序，白底老路径一字不动。
-    """
-    labels = np.array([[0, 0, 1], [0, 1, 1]], np.uint8)
-    palette = np.array([[255, 255, 255], [30, 30, 40]], np.uint8)
-    assert regions.color_order(labels, palette) == [0, 1]          # 纯亮度序：白垫底
-    assert regions.color_order(labels, palette, np.array([255, 255, 255])) == [1, 0]
-
-
-def test_matte_layer_reaches_foreground():
-    """与底色同色的层必须进前景，不能整层跳过。
-
-    为什么必须画：这一层排在绘制序列末尾，作用是把自己重新压回去——
-    别的色块的多边形轻微越界侵占到它身上时，靠它盖回来。整层跳过时
-    那 些位置就永久留在侵占方的颜色里（2026-09-14 实测四张真实截图
-    MAE 降 0.17~0.25）。
-
-    不看端到端像素：matte 色与底色差 <= 3、底板剪影判据是差 > 9，
-    两者互斥，所以那些位置在底板阶段就被刷回底色，跳不跳过看不出来。
-    """
-    reference = np.full((12, 16, 3), 255, np.uint8)
-    reference[4:8, 6:10] = (30, 30, 40)
-    labels = np.zeros((12, 16), np.uint8)
-    labels[4:8, 6:10] = 1
-    palette = np.array([[255, 255, 255], [30, 30, 40]], np.uint8)
-    illustration = regions.build_illustration(
-        reference, labels, palette, background=(255, 255, 255), epsilon=0.30,
-        gradients=False, underpainting=False, progress=lambda _: None)
-    shades = {tuple(int(v) for v in np.asarray(region.paint.rgb))
-              for region in illustration.foreground if hasattr(region.paint, "rgb")}
-    assert (255, 255, 255) in shades, shades
 
 
 # ---------- 兼容性回归：nonzero 填充（旧 WebView 不认 evenodd） ----------

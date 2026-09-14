@@ -8,11 +8,19 @@
 
 - **选中内联 SVG 方言后，成品的页签还自称「纯 CSS」**：配置切到 `svg` 描出来的文档，在浏览器页签和朗读标签上写的仍是「羽画 · 纯 CSS 描摹」。现在标题跟着实际方言走——SVG 稿自称「羽画 · SVG 描摹」，纯 CSS 稿一字未变
 
+##### ⚡ 性能
+
+- **动图成品体积降一到两成**：默认的扫描线风格原本把每两行平均成一行——平均会把上下两行的色带边界叠在一起，越写越长。改为直接取其中一行真实像素，并折叠相邻的重复帧。六张真实动图实测文件小 **13%~19%**，画面差异只在轮廓上一像素级的细线
+
 **English**
 
 ##### 🐛 Fixes
 
 - **The page title claimed "pure CSS" even for inline-SVG output**: with `render_backend` set to `svg`, the artifact still labelled itself "羽画 · 纯 CSS 描摹" in the browser tab and the screen-reader label. The title now follows the actual dialect — SVG output reads "羽画 · SVG 描摹", and pure-CSS output is unchanged
+
+##### ⚡ Performance
+
+- **Animation output is 13–19% smaller**: the default scanline style used to average every two rows into one — averaging stacks both rows' colour-band edges together and writes *more*, not less. It now takes a real pixel row and folds repeated adjacent frames. Measured on six real GIFs: **13–19% smaller**, with differences limited to one-pixel hairlines along contours
 
 #### v0.3.1
 

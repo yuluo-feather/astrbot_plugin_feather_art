@@ -10,6 +10,14 @@
 - 动态行 → div.layer（@keyframes 逐帧 background 切换 + 100% 回环首帧）；
 - 行高 = 行距% + OVERLAP_PCT：亚像素重叠，根治「非整数设备缩放下的
   取整缝隙」（Windows 125%/文本缩放场景实测 0 白线）。
+
+字节账（2026-09-14 六张真实动图实测）：体积 97~99.6% 落在动态行的
+@keyframes 里，静止行侧只占 0~0.7%——且六张里三张静止行为 0（动图上
+连背景都在动）。所以省字节的杠杆只有「行数 / 帧数 / 段数」三个，本模块
+管其中两个：行合并取代表行（不取均值）与相邻帧 stop 折叠，都是零语义
+改动（浏览器逐像素比对验收）。注意：**任何按帧变化的自适应参数都会污染
+changed 判定**——两帧逐像素相同时，quant 16 vs 24 会让 46/60~169/169 行的
+渐变串不同，静止区被整块拖进 keyframes，体积反向爆炸。
 """
 
 from __future__ import annotations
@@ -28,6 +36,7 @@ DENOISE_KERNEL = 3   # 去抖动中值滤波核
 QUANT_STEP = 16      # 颜色量化步长（跨帧收敛，帧间色不漂移）
 SEG_TOL = 20         # 行分段色差阈值（单通道）
 ROW_PX = 2           # 行合并：原图纵向 ROW_PX 像素并为一行
+MERGE_MODE = "take"  # 行合并取法："take"=取区间中间那一行，"mean"=均值
 OVERLAP_PCT = 0.17   # 行高超出行距的百分比（防取整缝隙）
 RECT_POLY = "polygon(0 0,100% 0,100% 100%,0 100%)"
 
@@ -69,28 +78,54 @@ def row_segments(row: np.ndarray, tol: int = SEG_TOL) -> list:
     return segs
 
 
+def _compact_hex(c) -> str:
+    """色值能缩成三位就缩（#aabbcc → #abc），颜色本身分毫不差。"""
+    r, g, b = int(c[0]), int(c[1]), int(c[2])
+    if r >> 4 == r & 15 and g >> 4 == g & 15 and b >> 4 == b & 15:
+        return "#%x%x%x" % (r & 15, g & 15, b & 15)
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def frame_pct(index: int, count: int) -> str:
+    """帧序号 → keyframes 百分比（去尾随零：0.00% → 0%，12.50% → 12.5%）。
+
+    小数点一定挡在尾零之前（"%.2f" 保底两位），所以 rstrip 不会误伤
+    "100.00" 这类整数——它是 100%，不是 1%。
+    """
+    return ("%.2f" % (index / count * 100)).rstrip("0").rstrip(".") + "%"
+
+
 def seg_gradient(segs: list, width: int) -> str:
     """同色段 → CSS 横向渐变串（双位置 stop，Chromium 71+）。"""
     parts = []
     for i, (x0, c) in enumerate(segs):
         x1 = segs[i + 1][0] if i + 1 < len(segs) else width
-        parts.append("#%02x%02x%02x %dpx %dpx" % (c[0], c[1], c[2], x0, x1))
+        parts.append("%s %dpx %dpx" % (_compact_hex(c), x0, x1))
     return "linear-gradient(90deg," + ",".join(parts) + ")"
 
 
-def merge_rows(frame: np.ndarray, row_h: int) -> np.ndarray:
-    """纵向 ROW_PX 像素均值合成一行（行数 = max(1, h // ROW_PX)）。
+def merge_rows(frame: np.ndarray, row_h: int, mode: str = MERGE_MODE) -> np.ndarray:
+    """纵向 row_h 像素合成一行（行数 = max(1, h // row_h)）。
+
+    mode="take"（默认）取区间首行那一行**真实像素**——均值合并会把两行的
+    色带边界求并集：六张真实动图实测段/行 38.0 → 30.9、每行渐变串只剩 80%
+    （最狠的一张 66.7 → 50.5，省 24%）。取哪一行是量出来的，不是拍的：
+    首行 80% / 次行 94%（六张里五张首行更省），且所有帧用同一下标——
+    逐帧挑行会让同一区域在帧间跳行，画面闪。这个性质也对上了模块头那句
+    「颜色 16 步收敛、帧间色不漂移」：合成出来的中间色不落在量化网格上。
+    mode="mean" 保留旧口径，供对照与回退。
 
     不足一行也要留一行：h < row_h 时 h // row_h 是 0，而 render_scanline
     那边用的是 max(1, ...)——两处口径必须一致，否则 1 像素高的帧会在取值时
     越界。宽扁动图（横幅、取景条）降采样后就会落到这一档，不是理论边界。
     """
     hh = max(1, frame.shape[0] // row_h)
-    out = np.zeros((hh, frame.shape[1], 3), np.uint8)
-    for i in range(hh):
-        out[i] = frame[i * row_h:(i + 1) * row_h].astype(np.int16) \
-            .mean(axis=0).astype(np.uint8)
-    return out
+    if mode == "take":
+        rows = [frame[i * row_h] for i in range(hh)]
+    else:
+        rows = [frame[i * row_h:(i + 1) * row_h].astype(np.int16).mean(axis=0)
+                .astype(np.uint8) for i in range(hh)]
+    return np.stack(rows)
 
 
 def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
@@ -106,7 +141,7 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
 
     prepared = [prepare_frame(f) for f in frames]
     hh = max(1, h // ROW_PX)
-    merged = [merge_rows(f, ROW_PX) for f in prepared]
+    merged = [merge_rows(f, ROW_PX, MERGE_MODE) for f in prepared]
 
     grads: list = []
     for t, m in enumerate(merged):
@@ -149,10 +184,18 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
     keyframe_total = 0
     for idx, y in enumerate(changed):
         top = y / hh * 100
-        steps = "".join("%.2f%%{background:%s}"
-                        % (t / frame_count * 100, grads[t][y])
-                        for t in range(frame_count))
-        steps += "100%%{background:%s}" % grads[0][y]
+        # 相邻帧渐变串相同就折叠那一帧的 stop：step-end 下该区间自动延续
+        # 前一值，折叠后渲染逐像素不变（实测省 0.01~5.98% 的 stop）。
+        steps, last = [], None
+        for t in range(frame_count):
+            gradient = grads[t][y]
+            if gradient != last:
+                steps.append("%s{background:%s}"
+                             % (frame_pct(t, frame_count), gradient))
+                last = gradient
+        if last != grads[0][y]:
+            steps.append("100%%{background:%s}" % grads[0][y])
+        steps = "".join(steps)
         css.append(".l%d{animation-name:k%d}" % (idx, idx))
         css.append("@keyframes k%d{%s}" % (idx, steps))
         body.append('<div class="layer l%d" style="top:%.4f%%"></div>'

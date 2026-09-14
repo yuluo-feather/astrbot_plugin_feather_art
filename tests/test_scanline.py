@@ -9,14 +9,26 @@ from io import BytesIO
 
 import numpy as np
 import pytest
+import util
 from PIL import Image
 
 from data.plugins.astrbot_plugin_feather_art import hardening  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art import service_animation as service  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art.feather_art.audit import audit_html  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art.feather_art.contract import BudgetExceeded  # noqa: E402
+from data.plugins.astrbot_plugin_feather_art import (
+    service_animation as service,  # noqa: E402
+)
+from data.plugins.astrbot_plugin_feather_art.feather_art.audit import (
+    audit_html,  # noqa: E402
+)
+from data.plugins.astrbot_plugin_feather_art.feather_art.contract import (
+    BudgetExceeded,  # noqa: E402
+)
 from data.plugins.astrbot_plugin_feather_art.feather_art.scanline import (  # noqa: E402
-    OVERLAP_PCT, ROW_PX, ScanlineConfig, merge_rows, render_scanline)
+    OVERLAP_PCT,
+    ROW_PX,
+    ScanlineConfig,
+    merge_rows,
+    render_scanline,
+)
 
 
 def _gif(n=4, size=(16, 16), duration=120):
@@ -59,9 +71,15 @@ def test_scanline_static_row_and_dynamic():
 
 
 def test_scanline_loop_steps_and_100pct():
+    """时间线必须覆盖首帧、按帧分布、以及 100% 回环。
+
+    帧百分比去尾零（0.00% → 0%）是紧凑写法、语义不变，断言随之钉字面量；
+    别哪天当成「格式回归」改回两位小数。
+    """
     doc, _ = render_scanline(_frames(4), ScanlineConfig(duration=1.0))
     assert "100%{background:" in doc
-    assert "0.00%{background:" in doc and "75.00%{background:" in doc
+    assert "0%{background:" in doc and "75%{background:" in doc
+    assert ".00%{background:" not in doc           # 紧凑写法：不留尾零
 
 
 def test_scanline_row_height_overlap():
@@ -154,4 +172,57 @@ def test_scanline_title_is_escaped():
     assert 'a&lt;b&gt;&amp;&quot;c' in doc
     assert "<title>a<b>" not in doc and 'aria-label="a<b' not in doc
     assert doc.count("&lt;b&gt;") == 2               # title 与 aria-label 各一处
+    assert audit_html(doc)["valid"]
+
+
+def _photo_frame() -> np.ndarray:
+    """一张有内容（渐变 + 色块 + 圆环 + 噪点）的确定性帧，RGB uint8。"""
+    image = Image.open(BytesIO(util.png_photo_like())).convert("RGB")
+    return np.asarray(image, np.uint8)
+
+
+def test_merge_rows_takes_representative_row():
+    """默认取区间首行那一行真实像素，不是均值。两条路都钉住。
+
+    均值会把两行的色带边界求并集：六张真实动图实测每行渐变串只剩 80%
+    （最狠的一张 66.7 → 50.5 段/行）。取首行还是次行是量出来的——首行
+    80% / 次行 94%，六张里五张首行更省。这条防的是「顺手改回均值」。
+    """
+    frame = np.zeros((4, 3, 3), np.uint8)
+    frame[0, :], frame[1, :] = (0, 0, 0), (10, 10, 10)
+    frame[2, :], frame[3, :] = (200, 200, 200), (255, 255, 255)
+    take = merge_rows(frame, 2)
+    assert take.shape == (2, 3, 3)
+    assert take[0][0].tolist() == [0, 0, 0]           # 区间 [0,2) 的首行
+    assert take[1][0].tolist() == [200, 200, 200]     # 区间 [2,4) 的首行
+    assert merge_rows(frame, 2, "mean")[0][0].tolist() == [5, 5, 5]
+
+
+def test_identical_frames_produce_no_dynamic_rows():
+    """两帧逐像素相同 → 动态行必须为 0、一个 @keyframes 都不许有。
+
+    挡的是「按帧自适应量化 / 色差阈值」这类改动：同一张静止图上 quant 16 与
+    24 会让 46/60~169/169 行的渐变串不同，静止区被整块拖进 keyframes——
+    体积反向爆炸，还砸掉「帧间色不漂移」的设计。帧级参数一律不许进。
+    """
+    base = _photo_frame()
+    doc, stats = render_scanline([base, base.copy()], ScanlineConfig(duration=0.2))
+    assert stats["layers"] == 0
+    assert stats["static_rows"] == stats["rows"]
+    assert "@keyframes" not in doc
+    assert audit_html(doc)["valid"]
+
+
+def test_adjacent_identical_frames_fold_stops():
+    """相邻帧渐变串相同 → 折叠该帧的 stop（step-end 下图不变）。
+
+    3 帧 [A, A, B]：t=1 与 t=0 相同应被折叠，t=2 保留，末尾回环首发帧。
+    折叠是纯省字节，渲染语义逐像素不变。
+    """
+    base = _photo_frame()
+    other = np.zeros_like(base)
+    doc, _ = render_scanline([base, base.copy(), other], ScanlineConfig(duration=0.3))
+    assert "33.33%{background:" not in doc        # 被折叠的那一帧
+    assert "66.67%{background:" in doc            # 真正变化的那一帧
+    assert "100%{background:" in doc              # 回环首帧
     assert audit_html(doc)["valid"]

@@ -2,10 +2,10 @@
 
 import numpy as np
 import pytest
-
 from data.plugins.astrbot_plugin_feather_art.feather_art import audit, backends, render
 from data.plugins.astrbot_plugin_feather_art.feather_art.contract import (
-    BudgetExceeded, FALLSAFE_MESSAGE,
+    FALLSAFE_MESSAGE,
+    BudgetExceeded,
 )
 
 
@@ -141,7 +141,7 @@ def test_template_old_webview_compatible():
     # 不带 clip-path 的内核要有提示层兜底（默认显示、支持时隐藏）
     assert '<div class="fallsafe"></div>' in doc
     assert FALLSAFE_MESSAGE in doc
-    assert '@supports (clip-path: polygon(0 0))' in doc
+    assert "@supports (clip-path: polygon(0 0))" in doc
     # 兼容改动不能破坏审计（元素/属性/CSP 全在合同内）
     result = audit.audit_html(doc)
     assert result["valid"], result["errors"]
@@ -159,7 +159,7 @@ def test_title_escaped_in_both_static_backends():
             reference, labels, palette, (8, 8), background=(255, 255, 255),
             title='a<b>&"c', epsilon=0.5, gradients=False, underpainting=False,
             max_bytes=10_000_000, progress=lambda _: None, backend=backend)
-        assert 'a&lt;b&gt;&amp;&quot;c' in doc, backend
+        assert "a&lt;b&gt;&amp;&quot;c" in doc, backend
         assert "<title>a<b>" not in doc, backend
         assert 'aria-label="a<b' not in doc, backend
         assert doc.count("&lt;b&gt;") == 2, backend      # title 与 aria-label 各一处

@@ -7,9 +7,8 @@
   才能下单——既防手滑重复点，也防被刷。
 """
 
-import time
-
 import asyncio
+import time
 
 
 class ConversionLimiter:

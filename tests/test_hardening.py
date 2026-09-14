@@ -1,9 +1,8 @@
 """防护层测试：体积上限、像素炸弹、多帧检查、损坏文件。"""
 
 import pytest
-
-from data.plugins.astrbot_plugin_feather_art import hardening
 import util
+from data.plugins.astrbot_plugin_feather_art import hardening
 
 
 def test_size_limit_exceeded():

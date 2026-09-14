@@ -27,8 +27,8 @@ quant 16 vs 24 会让 46/60~169/169 行的渐变串不同，静止区被整块�
 from __future__ import annotations
 
 import html
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import cv2
 import numpy as np
@@ -50,7 +50,7 @@ class ScanlineConfig:
     """渲染配置（由 service_animation 组装）。"""
 
     title: str = "羽画 · 纯 CSS 动画"
-    background: "str | tuple" = "#ffffff"   # "#hex" 或 (r, g, b) 三元组
+    background: str | tuple = "#ffffff"   # "#hex" 或 (r, g, b) 三元组
     duration: float = 1.0      # 单轮循环总时长（秒）
     loop: bool = True
     max_bytes: int = 32 * 1024 * 1024   # 体积上限，超了抛 BudgetExceeded
@@ -90,8 +90,8 @@ def _compact_hex(c) -> str:
     """色值能缩成三位就缩（#aabbcc → #abc），颜色本身分毫不差。"""
     r, g, b = int(c[0]), int(c[1]), int(c[2])
     if r >> 4 == r & 15 and g >> 4 == g & 15 and b >> 4 == b & 15:
-        return "#%x%x%x" % (r & 15, g & 15, b & 15)
-    return "#%02x%02x%02x" % (r, g, b)
+        return f"#{r & 15:x}{g & 15:x}{b & 15:x}"
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def frame_pct(index: int, count: int) -> str:
@@ -100,7 +100,7 @@ def frame_pct(index: int, count: int) -> str:
     小数点一定挡在尾零之前（"%.2f" 保底两位），所以 rstrip 不会误伤
     "100.00" 这类整数——它是 100%，不是 1%。
     """
-    return ("%.2f" % (index / count * 100)).rstrip("0").rstrip(".") + "%"
+    return f"{index / count * 100:.2f}".rstrip("0").rstrip(".") + "%"
 
 
 def seg_gradient(segs: list, width: int) -> str:
@@ -108,7 +108,7 @@ def seg_gradient(segs: list, width: int) -> str:
     parts = []
     for i, (x0, c) in enumerate(segs):
         x1 = segs[i + 1][0] if i + 1 < len(segs) else width
-        parts.append("%s %dpx %dpx" % (_compact_hex(c), x0, x1))
+        parts.append(f"{_compact_hex(c)} {x0}px {x1}px")
     return "linear-gradient(90deg," + ",".join(parts) + ")"
 
 
@@ -157,7 +157,7 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         for y in range(hh):
             row_g.append(seg_gradient(row_segments(m[y]), w))
         grads.append(row_g)
-        progress("预分段 帧 %d/%d" % (t + 1, frame_count))
+        progress(f"预分段 帧 {t + 1}/{frame_count}")
 
     changed = [y for y in range(hh)
                if any(grads[t][y] != grads[0][y] for t in range(1, frame_count))]
@@ -167,19 +167,19 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         ".illustration{position:relative;isolation:isolate;overflow:hidden;"
         "width:100%;max-width:" + str(w) + "px;margin:0 auto;background:"
         + _bg_color(config.background) + ";contain:layout paint}",
-        ".illustration::before{content:\"\";display:block;padding-top:"
-        + ("%.5f%%" % (h / w * 100)) + "}",
+        '.illustration::before{content:"";display:block;padding-top:'
+        + f"{h / w * 100:.5f}%" + "}",
         ".shape{position:absolute;left:0;right:0;height:"
-        + ("%.4f%%" % row_h_pct) + ";pointer-events:none}",
+        + f"{row_h_pct:.4f}%" + ";pointer-events:none}",
         ".layer{position:absolute;left:0;top:0;right:0;height:"
-        + ("%.4f%%" % row_h_pct) + ";animation-duration:"
-        + ("%.2f" % config.duration) + "s;animation-timing-function:step-end;"
+        + f"{row_h_pct:.4f}%" + ";animation-duration:"
+        + f"{config.duration:.2f}" + "s;animation-timing-function:step-end;"
         "animation-iteration-count:" + ("infinite" if config.loop else "1")
         + "}",
         ".fallsafe{display:block;position:fixed;top:0;left:0;right:0;bottom:0;"
         "z-index:2147483647;background:" + _bg_color(config.background)
         + ";color:#333;padding:24px;font:15px/1.8 sans-serif;box-sizing:border-box}",
-        ".fallsafe::after{content:\"" + FALLSAFE_MESSAGE + "\"}",
+        '.fallsafe::after{content:"' + FALLSAFE_MESSAGE + '"}',
         "@supports (clip-path: polygon(0 0)){.fallsafe{display:none}}",
     ]
 
@@ -187,8 +187,8 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
     for y in range(hh):
         top = y / hh * 100
         if y not in changed:
-            body.append('<div class="shape" style="top:%.4f%%;background:%s;'
-                        'clip-path:%s"></div>' % (top, grads[0][y], RECT_POLY))
+            body.append(f'<div class="shape" style="top:{top:.4f}%;'
+                        f'background:{grads[0][y]};clip-path:{RECT_POLY}"></div>')
     keyframe_total = 0
     for idx, y in enumerate(changed):
         top = y / hh * 100
@@ -198,19 +198,18 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         for t in range(frame_count):
             gradient = grads[t][y]
             if gradient != last:
-                steps.append("%s{background:%s}"
-                             % (frame_pct(t, frame_count), gradient))
+                steps.append(
+                    f"{frame_pct(t, frame_count)}{{background:{gradient}}}")
                 last = gradient
         if last != grads[0][y]:
-            steps.append("100%%{background:%s}" % grads[0][y])
+            steps.append(f"100%{{background:{grads[0][y]}}}")
         steps = "".join(steps)
-        css.append(".l%d{animation-name:k%d}" % (idx, idx))
-        css.append("@keyframes k%d{%s}" % (idx, steps))
-        body.append('<div class="layer l%d" style="top:%.4f%%"></div>'
-                    % (idx, top))
+        css.append(f".l{idx}{{animation-name:k{idx}}}")
+        css.append(f"@keyframes k{idx}{{{steps}}}")
+        body.append(f'<div class="layer l{idx}" style="top:{top:.4f}%"></div>')
         keyframe_total += frame_count + 1
         if idx and idx % 10 == 0:
-            progress("行 %d/%d（动态 %d）" % (idx, hh, len(changed)))
+            progress(f"行 {idx}/{hh}（动态 {len(changed)}）")
 
     label = html.escape(config.title, quote=True)
     document = (
@@ -221,7 +220,7 @@ def render_scanline(frames: list, config: ScanlineConfig) -> tuple:
         "'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; "
         "connect-src 'none'; font-src 'none'; object-src 'none'; base-uri "
         "'none'; form-action 'none'\">"
-        '<title>' + label + '</title><style>'
+        '<title>' + label + "</title><style>"
         + chr(10).join(css) + "</style></head><body>"
         '<main class="illustration" role="img" aria-label="'
         + label + '"><div class="fallsafe"></div>'

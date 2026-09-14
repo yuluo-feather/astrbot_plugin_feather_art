@@ -2,12 +2,14 @@
 from io import BytesIO
 
 import pytest
-from PIL import Image
-
-from data.plugins.astrbot_plugin_feather_art import service_animation as service  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art.feather_art.imaging import decode_frames  # noqa: E402
-
 import util  # noqa: E402
+from data.plugins.astrbot_plugin_feather_art import (
+    service_animation as service,  # noqa: E402
+)
+from data.plugins.astrbot_plugin_feather_art.feather_art.imaging import (
+    decode_frames,  # noqa: E402
+)
+from PIL import Image
 
 
 def _gif(n=4, size=(16, 16)) -> bytes:

@@ -10,8 +10,6 @@ from io import BytesIO
 import numpy as np
 import pytest
 import util
-from PIL import Image
-
 from data.plugins.astrbot_plugin_feather_art import hardening  # noqa: E402
 from data.plugins.astrbot_plugin_feather_art import (
     service_animation as service,  # noqa: E402
@@ -29,6 +27,7 @@ from data.plugins.astrbot_plugin_feather_art.feather_art.scanline import (  # no
     merge_rows,
     render_scanline,
 )
+from PIL import Image
 
 
 def _gif(n=4, size=(16, 16), duration=120):
@@ -49,7 +48,7 @@ def test_scanline_structure_and_audit():
     # 行数口径 = h // ROW_PX，用常量表达，改 ROW_PX 时不必再来改这里
     assert stats["style"] == "scanline" and stats["rows"] == 8 // ROW_PX
     assert stats["frames"] == 3 and stats["duration"] == 0.9
-    assert '@keyframes k0' in doc
+    assert "@keyframes k0" in doc
     assert 'class="illustration"' in doc
     # padding-top 必须带 %（裸数字 = 画布塌陷，2026-09-08 坑的回归红线）
     m = re.search(r"padding-top:([0-9.]+)%", doc)
@@ -87,7 +86,7 @@ def test_scanline_row_height_overlap():
     """行高 = 行距% + 重叠（防缩放缝隙的回归红线）。"""
     doc, stats = render_scanline(_frames(2), ScanlineConfig(duration=0.2))
     expect = 100.0 / stats["rows"] + OVERLAP_PCT
-    assert ("height:%.4f%%" % expect) in doc
+    assert f"height:{expect:.4f}%" in doc
 
 
 def test_trace_animation_scanline_e2e(tmp_path):
@@ -170,7 +169,7 @@ def test_trace_animation_vector_respects_max_mb(tmp_path):
 def test_scanline_title_is_escaped():
     """标题进 <title> 与 aria-label 两处都要转义（口径见 contract.DocumentConfig）。"""
     doc, _ = render_scanline(_frames(2), ScanlineConfig(title='a<b>&"c'))
-    assert 'a&lt;b&gt;&amp;&quot;c' in doc
+    assert "a&lt;b&gt;&amp;&quot;c" in doc
     assert "<title>a<b>" not in doc and 'aria-label="a<b' not in doc
     assert doc.count("&lt;b&gt;") == 2               # title 与 aria-label 各一处
     assert audit_html(doc)["valid"]

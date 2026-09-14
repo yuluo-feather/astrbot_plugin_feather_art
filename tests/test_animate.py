@@ -1,10 +1,15 @@
 """animate：帧间图层跟踪（确定性贪心）+ 实例特征提取。"""
 import numpy as np
 import pytest
-
 from data.plugins.astrbot_plugin_feather_art.feather_art.animate import (  # noqa: E402
-    ShapeKey, Track, _iou, _color_sim, extract_shapes, match_score,
-    track_shapes, anchor_track,
+    ShapeKey,
+    Track,
+    _color_sim,
+    _iou,
+    anchor_track,
+    extract_shapes,
+    match_score,
+    track_shapes,
 )
 
 SIZE = (100, 100)

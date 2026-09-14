@@ -13,9 +13,9 @@ import math
 import os
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 from .feather_art import __version__
 from .feather_art.audit import audit_html

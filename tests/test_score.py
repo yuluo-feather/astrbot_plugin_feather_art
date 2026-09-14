@@ -14,7 +14,6 @@
 import cv2
 import numpy as np
 import util
-
 from data.plugins.astrbot_plugin_feather_art import service
 from data.plugins.astrbot_plugin_feather_art.feather_art.geometry import bridge_rings
 from data.plugins.astrbot_plugin_feather_art.feather_art.paint import Solid

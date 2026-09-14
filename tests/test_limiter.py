@@ -1,7 +1,6 @@
 """限流层测试：全局并发串行、每用户冷却、过期清理。"""
 
 import asyncio
-import sys
 import time
 
 from data.plugins.astrbot_plugin_feather_art import limiter
@@ -25,6 +24,9 @@ def test_serial_gate_blocks_second():
         await asyncio.sleep(0.05)
         assert acquired == [True]
         gate.release()
+        # 收尾：既确保任务真的结束，也让 task 保持引用——
+        # 3.12 起未被引用的 Task 可能被 GC 掉，那样第二人就永远不会被唤醒。
+        await task
 
     asyncio.run(scenario())
 

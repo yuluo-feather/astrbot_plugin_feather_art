@@ -16,9 +16,8 @@
 import hashlib
 
 import pytest
-
-from data.plugins.astrbot_plugin_feather_art import service
 import util
+from data.plugins.astrbot_plugin_feather_art import service
 
 FIXTURE_MD5 = "56a7fd17e8a6ec201edf33b71f3bb46d"
 DOCUMENT_SHA256 = "6c32ff9d7fedc7a79e92296d9ac941123589b38381d60b76400aa0a094d46c13"

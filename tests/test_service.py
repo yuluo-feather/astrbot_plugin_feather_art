@@ -1,9 +1,8 @@
 """转换编排测试：端到端描摹、覆盖保护、fit 阶梯、确定性。"""
 
 import pytest
-
-from data.plugins.astrbot_plugin_feather_art import config, service
 import util
+from data.plugins.astrbot_plugin_feather_art import config, service
 
 
 def _trace(tmp_path, preset="sketch", fit=10.0, **kwargs):

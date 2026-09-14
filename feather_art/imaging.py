@@ -7,14 +7,13 @@ RGB uint8 数组，量化与轮廓直接拿去用。
 
 from io import BytesIO
 from pathlib import Path
-from typing import Union
 
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
 # 输入就是普通图片字节的来源类型
-SourceLike = Union[bytes, bytearray, Path, str]
+SourceLike = bytes | bytearray | Path | str
 
 
 def _to_reference(image: Image.Image, matte: tuple[int, int, int],
@@ -88,7 +87,7 @@ def decode_frames(source: SourceLike, max_width: int, matte: tuple[int, int, int
             sample = int(min(sample_limit, max(8, est_duration * 4)))
         else:
             sample = min(sample_limit, total)
-        chosen = sorted(set(round(x) for x in np.linspace(0, total - 1, min(sample, total))))
+        chosen = sorted({round(x) for x in np.linspace(0, total - 1, min(sample, total))})
         # 总时长必须先收全：被跳过的帧也会占据播放时间，只统计保留帧会
         # 把 2.99s 的动画压成 0.79s（节奏快了 3.8 倍）。先遍历全部帧累计
         # 时长，再按保留帧数均摊——循环总时长 = 原动图时长。

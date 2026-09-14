@@ -3,14 +3,21 @@ import re
 
 import numpy as np
 import pytest
-
-from data.plugins.astrbot_plugin_feather_art.feather_art.animate import ShapeKey, Track  # noqa: E402
-from data.plugins.astrbot_plugin_feather_art.feather_art.audit import audit_html  # noqa: E402
+from data.plugins.astrbot_plugin_feather_art.feather_art.animate import (  # noqa: E402
+    ShapeKey,
+    Track,
+)
+from data.plugins.astrbot_plugin_feather_art.feather_art.audit import (
+    audit_html,  # noqa: E402
+)
 from data.plugins.astrbot_plugin_feather_art.feather_art.contract import (  # noqa: E402
-    BudgetExceeded, FALLSAFE_MESSAGE,
+    FALLSAFE_MESSAGE,
+    BudgetExceeded,
 )
 from data.plugins.astrbot_plugin_feather_art.feather_art.render_animation import (  # noqa: E402
-    AnimationConfig, _pad_poly, render_animation,
+    AnimationConfig,
+    _pad_poly,
+    render_animation,
 )
 
 
@@ -71,7 +78,7 @@ def test_animation_title_is_escaped():
     """<title> 与 aria-label 两处都转义，且转义后仍过审计。"""
     doc, _ = render_animation(_tracks(), (100, 100), 3,
                               AnimationConfig(title='a<b>&"c', max_bytes=10_000_000))
-    assert 'a&lt;b&gt;&amp;&quot;c' in doc
+    assert "a&lt;b&gt;&amp;&quot;c" in doc
     assert "<title>a<b>" not in doc and 'aria-label="a<b' not in doc
     assert doc.count("&lt;b&gt;") == 2               # title 与 aria-label 各一处
     report = audit_html(doc)
@@ -114,12 +121,12 @@ def test_pad_poly_repeats_first_point():
 def test_audit_rejects_dangling_animation():
     """layer 引用了不存在的 @keyframes → 审计报错。"""
     doc = (
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
-        "<meta http-equiv=\"Content-Security-Policy\" "
+        '<!DOCTYPE html><html><head><meta charset="utf-8">'
+        '<meta http-equiv="Content-Security-Policy" '
         "content=\"default-src 'none'; script-src 'none'; img-src 'none\">"
         "<title>t</title><style>.l0{animation-name:k9}</style></head><body>"
-        "<main class=\"illustration\" role=\"img\" aria-label=\"t\">"
-        "<div class=\"layer l0\"></div></main></body></html>")
+        '<main class="illustration" role="img" aria-label="t">'
+        '<div class="layer l0"></div></main></body></html>')
     report = audit_html(doc)
     assert not report["valid"]
     assert any("missing keyframes" in e for e in report["errors"])
@@ -139,6 +146,6 @@ def test_template_old_webview_compatible_animation():
     assert "max-width" in doc
     assert '<div class="fallsafe"></div>' in doc
     assert FALLSAFE_MESSAGE in doc
-    assert '@supports (clip-path: polygon(0 0))' in doc
+    assert "@supports (clip-path: polygon(0 0))" in doc
     report = audit_html(doc)
     assert report["valid"], report["errors"]

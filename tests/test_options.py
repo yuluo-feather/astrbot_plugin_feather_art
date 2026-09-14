@@ -1,6 +1,9 @@
 """options.parse_options：指令解析顺序无关 + 占位词透明。"""
 from data.plugins.astrbot_plugin_feather_art.options import (  # noqa: E402
-    PRESET_WORDS, SAMPLE_MAX, SAMPLE_MIN, parse_options,
+    PRESET_WORDS,
+    SAMPLE_MAX,
+    SAMPLE_MIN,
+    parse_options,
 )
 
 

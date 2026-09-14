@@ -25,12 +25,16 @@ from astrbot.api.message_components import Image, Plain
 try:
     from .config import DEFAULTS, load_settings
     from .deliver import build_chain
-    from .hardening import (animation_length_hint, check_file_size,
-                          inspect_animation, user_fault)
+    from .feather_art import __version__
+    from .feather_art.presets import resolve
+    from .hardening import (
+        animation_length_hint,
+        check_file_size,
+        inspect_animation,
+        user_fault,
+    )
     from .limiter import ConversionLimiter
     from .options import SAMPLE_MAX, SAMPLE_MIN, parse_options
-    from .feather_art.presets import resolve
-    from .feather_art import __version__
     from .service import TraceConfig, TraceError, trace_image
     from .service_animation import trace_animation
     _DEPS_OK = True

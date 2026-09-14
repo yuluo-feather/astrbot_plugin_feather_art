@@ -1,0 +1,18 @@
+# 羽画自己的 lint 契约。
+#
+# 为什么要有这一份：羽画的代码住在 AstrBot 仓库外层，原本吃的是
+# AstrBot/pyproject.toml 里那套 select（F/W/E/ASYNC/C4/Q/I/UP）——
+# 上游改一行，羽画的 lint 结果就跟着变；而且那边钉的是 ruff 0.15.22，
+# 本地跑的是 0.16.6，连版本都不一致。规则集随插件走才稳定，
+# 发布出去以后在任何一台机器上跑，结果都一样。
+#
+# 规则集沿用 AstrBot 那份（同样是 AstrBot 插件，ASYNC 系列对插件尤其相关），
+# 只额外排除探针目录：.work/ 里的脚本是量数据用完就丢的，不参与风格约束。
+line-length = 88
+target-version = "py310"
+
+extend-exclude = [".work"]
+
+[lint]
+select = ["F", "W", "E", "ASYNC", "C4", "Q", "I", "UP"]
+ignore = ["F403", "F405", "E501", "ASYNC230", "ASYNC240"]

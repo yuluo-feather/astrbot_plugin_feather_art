@@ -50,7 +50,7 @@ def report_to_text(report: dict) -> str:
         detail = [f"{report.get('shapes', 0)} 个轮廓形状"]
         if report.get("interior_holes"):
             detail.append(f"{report['interior_holes']} 处孔洞")
-        if report.get('underpainting_shapes'):
+        if report.get("underpainting_shapes"):
             detail.append(f"{report['underpainting_shapes']} 块底板")
         if report.get("gradient_fills"):
             detail.append(f"{report['gradient_fills']} 处渐变")

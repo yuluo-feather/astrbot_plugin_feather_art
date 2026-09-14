@@ -15,8 +15,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .animate import Track, ShapeKey, anchor_track
-from .contract import BudgetExceeded, FALLSAFE_MESSAGE
+from .animate import ShapeKey, Track, anchor_track
+from .contract import FALLSAFE_MESSAGE, BudgetExceeded
 from .geometry import hex_color, number
 
 _CSP_META = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; script-src \'none\'; connect-src \'none\'; font-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\'">'
@@ -129,9 +129,9 @@ def render_animation(tracks: list[Track], size: tuple[int, int],
         f".illustration{{position:relative;isolation:isolate;overflow:hidden;"
         f"width:100%;max-width:{size[0]}px;margin:0 auto;"
         f"background:{hex_color(config.background)};contain:layout paint}}\n"
-        f".illustration::before{{content:\"\";display:block;padding-top:{sizer}%}}\n"
+        f'.illustration::before{{content:"";display:block;padding-top:{sizer}%}}\n'
         f".fallsafe{{display:block;position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;background:{hex_color(config.background)};color:#333;padding:24px;font:15px/1.8 sans-serif;box-sizing:border-box}}\n"
-        f".fallsafe::after{{content:\"{FALLSAFE_MESSAGE}\"}}\n"
+        f'.fallsafe::after{{content:"{FALLSAFE_MESSAGE}"}}\n'
         f"@supports (clip-path: polygon(0 0)){{.fallsafe{{display:none}}}}\n"
         f".layer{{position:absolute;left:0;top:0;width:100%;height:100%;"
         f"animation-duration:{duration:.2f}s;"
@@ -144,13 +144,13 @@ def render_animation(tracks: list[Track], size: tuple[int, int],
     writer.push(css)
     label = html.escape(config.title, quote=True)
     document = (
-        "<!DOCTYPE html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        "<meta name=\"color-scheme\" content=\"light\">"
+        '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<meta name="color-scheme" content="light">'
         f"{_CSP_META}"
         f"<title>{label}</title><style>{writer.text}</style></head><body>"
-        "<div class=\"fallsafe\"></div>"
-        f"<main class=\"illustration\" role=\"img\" aria-label=\"{label}\">"
+        '<div class="fallsafe"></div>'
+        f'<main class="illustration" role="img" aria-label="{label}">'
         + "".join(f'<div class="layer l{i}"></div>' for i in range(len(ordered)))
         + "</main></body></html>"
     )

@@ -1,7 +1,7 @@
 """算法核心测试：量化 / 合并 / 几何 / 渐变 / 成像。"""
 
 import numpy as np
-
+import util
 from data.plugins.astrbot_plugin_feather_art.feather_art import (
     geometry,
     imaging,
@@ -10,8 +10,6 @@ from data.plugins.astrbot_plugin_feather_art.feather_art import (
     presets,
     quantize,
 )
-import util
-
 
 # ---------- quantize ----------
 

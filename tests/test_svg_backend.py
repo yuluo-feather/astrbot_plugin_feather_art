@@ -16,14 +16,24 @@ import re
 import numpy as np
 import pytest
 import util
-
 from data.plugins.astrbot_plugin_feather_art import service
-from data.plugins.astrbot_plugin_feather_art.feather_art import audit, backends, render, svg_backend
+from data.plugins.astrbot_plugin_feather_art.feather_art import (
+    audit,
+    backends,
+    render,
+    svg_backend,
+)
 from data.plugins.astrbot_plugin_feather_art.feather_art.contract import DocumentConfig
-from data.plugins.astrbot_plugin_feather_art.feather_art.geometry import bridge_rings, number
+from data.plugins.astrbot_plugin_feather_art.feather_art.geometry import (
+    bridge_rings,
+    number,
+)
 from data.plugins.astrbot_plugin_feather_art.feather_art.paint import Gradient, Solid
 from data.plugins.astrbot_plugin_feather_art.feather_art.regions import (
-    Clip, Foundation, Illustration, Region,
+    Clip,
+    Foundation,
+    Illustration,
+    Region,
 )
 
 BOX = ((0.0, 0.0), (16.0, 16.0))

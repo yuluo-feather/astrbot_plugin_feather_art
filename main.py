@@ -154,8 +154,8 @@ class FeatherArtPlugin(Star):
         """带图消息一律记一份：群里别人发的图也得描得到。
 
         不 yield 任何东西，所以不参与响应、不影响事件后续传播；落盘丢给后台
-        任务，不挡消息流水线。优先级用默认的 0，高于 AngelHeart 的 -10，能在
-        它的防抖把事件拦停之前拿到图。
+        任务，不挡消息流水线。优先级用默认的 0，高于在事件总线上做防抖拦截
+        的插件，能在它们把事件拦停之前拿到图。
         """
         for comp in event.get_messages():
             if isinstance(comp, Image):

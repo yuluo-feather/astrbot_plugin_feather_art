@@ -33,7 +33,7 @@ try:
         inspect_animation,
         user_fault,
     )
-    from .inbox import SessionInbox
+    from .inbox import SessionInbox, iter_images
     from .limiter import ConversionLimiter
     from .options import SAMPLE_MAX, SAMPLE_MIN, parse_options
     from .service import TraceConfig, TraceError, trace_image
@@ -126,11 +126,15 @@ class FeatherArtPlugin(Star):
 
     # ---------- 图片获取 ----------
 
-    async def _cache_image(self, event: AstrMessageEvent, comp: Image) -> Path | None:
-        """把一张图落到工作目录、记进本会话缓存，返回路径。
+    async def _cache_image(
+        self, event: AstrMessageEvent, comp: Image, owner: str
+    ) -> Path | None:
+        """把一张图落到工作目录、按（会话, 归属者）记进缓存，返回路径。
 
-        框架是懒下载：图片要 convert_to_file_path() 才落盘，所以没被取过的图
-        在任何地方都不存在——别人发的图必须由 _remember_image 主动记一份。
+        owner 是「这张图属于谁」而不是「谁在请求」：引用别人的图时，要记的是
+        画的原作者。框架是懒下载，图片要 convert_to_file_path() 才落盘，所以
+        没被取过的图在任何地方都不存在——别人发的图得由 _remember_image 主动
+        记一份。
         """
         try:
             path = await comp.convert_to_file_path()
@@ -141,7 +145,7 @@ class FeatherArtPlugin(Star):
                 return None
             dest = self.work_dir / f"inbox_{int(time.time())}_{secrets.token_hex(4)}{src.suffix.lower()}"
             shutil.copyfile(src, dest)
-            self.inbox.remember(event.unified_msg_origin, dest)
+            self.inbox.remember(event.unified_msg_origin, owner, dest)
             return dest
         except Exception as exc:
             logger.warning("图片获取失败: %s", exc)
@@ -157,28 +161,38 @@ class FeatherArtPlugin(Star):
         任务，不挡消息流水线。优先级用默认的 0，高于在事件总线上做防抖拦截
         的插件，能在它们把事件拦停之前拿到图。
         """
+        sender = str(event.get_sender_id())
         for comp in event.get_messages():
             if isinstance(comp, Image):
-                task = asyncio.create_task(self._cache_image(event, comp))
+                task = asyncio.create_task(self._cache_image(event, comp, sender))
                 self._cache_tasks.add(task)
                 task.add_done_callback(self._cache_tasks.discard)
                 return
 
     async def _grab_image(self, event: AstrMessageEvent) -> Path | None:
-        """从当前消息里取第一张图（框架下载到本地），缓存并返回路径。"""
+        """取图：本消息自己带的图优先，没有就下钻被引用的消息链。
+
+        下钻这一步不能省——群里「B 引用 A 的图说帮我画」时图在 Reply.chain
+        里，看不见它就只能回退到一张旧图，表现是「两次都画了同一张」。
+        """
         try:
-            for comp in event.get_messages():
-                if isinstance(comp, Image):
-                    dest = await self._cache_image(event, comp)
-                    if dest:
-                        return dest
+            sender = str(event.get_sender_id())
+            for comp, owner in iter_images(event.get_messages(), sender):
+                dest = await self._cache_image(event, comp, owner)
+                if dest:
+                    return dest
         except Exception as exc:
             logger.warning("图片获取失败: %s", exc)
         return None
 
     def _recent_image(self, event: AstrMessageEvent) -> Path | None:
-        """回退：取本会话最近的图（LLM 工具场景与「继续」场景用）。"""
-        return self.inbox.latest(event.unified_msg_origin)
+        """回退：取这个人自己最近发的图（LLM 工具场景与「继续」场景用）。
+
+        不跨发送者：A 发的图不会喂给 B 的请求。B 没发过图就返回 None，外面
+        会回一句「先发图」——画错比画不出更糟。
+        """
+        return self.inbox.latest(
+            event.unified_msg_origin, str(event.get_sender_id()))
 
     # ---------- 入口 ----------
 

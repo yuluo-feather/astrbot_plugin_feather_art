@@ -6,13 +6,13 @@
 
 ##### 🐛 修复
 
-- **群里别人发的图，现在描的就是那张图**：群里有人发了图、接着说「帮我画」，以前描出来的可能是说话人自己更早发过的那张——连着两次求画，收到的却是同一张。现在记的是本会话里最后出现的那张图，谁最后发的就描谁
+- **群里别人发的图，现在描的真是那张图**：同一条修过两遍。第一遍修「别人发的图根本没被记下来」——A 发图、B 引用它说「帮我画」，描出来的是 B 自己更早发过的那张，连着两次求画收到同一张；当时改成「谁最后发就描谁」，结果更糟：A 发图、C 发图、A 再说「帮我画」，描出来成了 C 的。现在两件事一起定：**引用消息里的图会被取出来**（不再当没看见），**取图只取请求者自己发的那张**——自己没发过就直说「先发图」，画错比画不出更糟
 
 **English**
 
 ##### 🐛 Fixes
 
-- **An image posted by someone else in the group now traces that image**: when someone posted a picture and then asked for it to be drawn, the result could be a picture *they* had sent earlier — two requests in a row came back with the same image. What gets remembered is now the latest image in the conversation, so whoever posted last is what gets traced
+- **An image posted by someone else in the group now really traces that image**: this one took two attempts. The first fixed "images from other people were never remembered" — when someone posted a picture and a second person quoted it asking for a drawing, the result was a picture the requester had sent earlier, so two requests in a row came back the same. That fix made it "whoever posted last is what gets traced", which turned out worse: A posts, C posts, A asks again, and it comes back as C's picture. Both halves are now settled together: **an image inside a quoted message is picked up** (no longer invisible), and **a request only ever uses the image the requester themselves posted** — if they haven't posted one it says so instead, since drawing the wrong image is worse than drawing none
 
 #### v0.3.2
 

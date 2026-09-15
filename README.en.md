@@ -213,7 +213,7 @@ tests/                # pytest suite (grows with development)
 
 #### v0.3.3
 
-- Fix: an image posted by someone else could come back as the requester's own older image — two requests in a row returned the same picture; the latest image in the conversation is now what gets traced
+- Fix: an image posted by someone else could come back as the requester's own older image — two requests in a row returned the same picture; an image inside a quoted message is now picked up, and a request only ever uses the image the requester themselves posted (if they haven't posted one, it says so instead)
 
 #### v0.3.2
 

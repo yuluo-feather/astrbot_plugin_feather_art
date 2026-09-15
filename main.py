@@ -33,6 +33,7 @@ try:
         inspect_animation,
         user_fault,
     )
+    from .inbox import SessionInbox
     from .limiter import ConversionLimiter
     from .options import SAMPLE_MAX, SAMPLE_MIN, parse_options
     from .service import TraceConfig, TraceError, trace_image
@@ -96,8 +97,12 @@ class FeatherArtPlugin(Star):
         # 工作目录：系统临时目录下专属文件夹，只容纳本插件前缀的文件
         self.work_dir = Path(tempfile.gettempdir()) / "feather_art"
         self.work_dir.mkdir(parents=True, exist_ok=True)
-        # 最近一次带图消息缓存：uid -> (本地路径, 时间戳)
-        self._last_image: dict[str, tuple[Path, float]] = {}
+        # 会话级收件箱：按会话记最近一张图（实现见 inbox.py，那里能单测）。
+        # 不按发送者——群里 A 发图、B 说「帮我画」时，事件归属可能落在 B 身上，
+        # 按发送者取会静默回退成 B 自己的旧图（即「两次都画第一张」）。
+        self.inbox = SessionInbox()
+        # 后台落盘任务：存引用防被 GC 回收
+        self._cache_tasks: set[asyncio.Task] = set()
         self._cleanup_stale()
 
     def _cleanup_stale(self) -> None:
@@ -121,32 +126,59 @@ class FeatherArtPlugin(Star):
 
     # ---------- 图片获取 ----------
 
+    async def _cache_image(self, event: AstrMessageEvent, comp: Image) -> Path | None:
+        """把一张图落到工作目录、记进本会话缓存，返回路径。
+
+        框架是懒下载：图片要 convert_to_file_path() 才落盘，所以没被取过的图
+        在任何地方都不存在——别人发的图必须由 _remember_image 主动记一份。
+        """
+        try:
+            path = await comp.convert_to_file_path()
+            if not path:
+                return None
+            src = Path(path)
+            if not src.exists():
+                return None
+            dest = self.work_dir / f"inbox_{int(time.time())}_{secrets.token_hex(4)}{src.suffix.lower()}"
+            shutil.copyfile(src, dest)
+            self.inbox.remember(event.unified_msg_origin, dest)
+            return dest
+        except Exception as exc:
+            logger.warning("图片获取失败: %s", exc)
+            return None
+
+    @filter.event_message_type(
+        filter.EventMessageType.GROUP_MESSAGE | filter.EventMessageType.PRIVATE_MESSAGE
+    )
+    async def _remember_image(self, event: AstrMessageEvent):
+        """带图消息一律记一份：群里别人发的图也得描得到。
+
+        不 yield 任何东西，所以不参与响应、不影响事件后续传播；落盘丢给后台
+        任务，不挡消息流水线。优先级用默认的 0，高于 AngelHeart 的 -10，能在
+        它的防抖把事件拦停之前拿到图。
+        """
+        for comp in event.get_messages():
+            if isinstance(comp, Image):
+                task = asyncio.create_task(self._cache_image(event, comp))
+                self._cache_tasks.add(task)
+                task.add_done_callback(self._cache_tasks.discard)
+                return
+
     async def _grab_image(self, event: AstrMessageEvent) -> Path | None:
-        """从消息里取第一张图（框架下载到本地），缓存并返回路径。"""
+        """从当前消息里取第一张图（框架下载到本地），缓存并返回路径。"""
         try:
             for comp in event.get_messages():
                 if isinstance(comp, Image):
-                    path = await comp.convert_to_file_path()
-                    if not path:
-                        continue
-                    src = Path(path)
-                    if not src.exists():
-                        continue
-                    dest = self.work_dir / f"inbox_{int(time.time())}_{secrets.token_hex(4)}{src.suffix.lower()}"
-                    shutil.copyfile(src, dest)
-                    self._last_image[str(event.get_sender_id())] = (dest, time.time())
-                    return dest
+                    dest = await self._cache_image(event, comp)
+                    if dest:
+                        return dest
         except Exception as exc:
             logger.warning("图片获取失败: %s", exc)
         return None
 
     def _recent_image(self, event: AstrMessageEvent) -> Path | None:
-        """回退：取该用户 30 分钟内的最近缓存图（LLM 工具场景与「继续」场景用）。"""
-        uid = str(event.get_sender_id())
-        record = self._last_image.get(uid)
-        if record and time.time() - record[1] < 1800 and record[0].exists():
-            return record[0]
-        return None
+        """回退：取本会话最近的图（LLM 工具场景与「继续」场景用）。"""
+        return self.inbox.latest(event.unified_msg_origin)
 
     # ---------- 入口 ----------
 

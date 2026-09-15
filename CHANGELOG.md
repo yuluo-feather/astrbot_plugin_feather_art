@@ -2,6 +2,18 @@
 
 > 每个版本条目均为中文在前、英文在后。
 
+#### v0.3.3
+
+##### 🐛 修复
+
+- **群里别人发的图，现在描的就是那张图**：群里有人发了图、接着说「帮我画」，以前描出来的可能是说话人自己更早发过的那张——连着两次求画，收到的却是同一张。现在记的是本会话里最后出现的那张图，谁最后发的就描谁
+
+**English**
+
+##### 🐛 Fixes
+
+- **An image posted by someone else in the group now traces that image**: when someone posted a picture and then asked for it to be drawn, the result could be a picture *they* had sent earlier — two requests in a row came back with the same image. What gets remembered is now the latest image in the conversation, so whoever posted last is what gets traced
+
 #### v0.3.2
 
 ##### 🐛 修复

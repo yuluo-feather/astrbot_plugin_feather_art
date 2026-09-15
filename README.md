@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.2-f8a5c2" alt="v0.3.2"/>
+  <img src="https://img.shields.io/badge/version-v0.3.3-f8a5c2" alt="v0.3.3"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -210,6 +210,10 @@ tests/                # pytest 用例（随开发增长）
 ```
 
 ## 📜 更新记录
+
+#### v0.3.3
+
+- 修复：群里别人发的图以前会被描成说话人自己的旧图——连着两次求画收到的是同一张；现在记的是本会话最后出现的那张图，谁最后发的就描谁
 
 #### v0.3.2
 

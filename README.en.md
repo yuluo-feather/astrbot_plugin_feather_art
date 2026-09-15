@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/yuluo-feather/astrbot_plugin_feather_art/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL%20v3-ffb3d9" alt="License: AGPL v3"/></a>
   <a href="https://astrbot.app"><img src="https://img.shields.io/badge/AstrBot-Plugin-ff9ecb" alt="AstrBot Plugin"/></a>
-  <img src="https://img.shields.io/badge/version-v0.3.2-f8a5c2" alt="v0.3.2"/>
+  <img src="https://img.shields.io/badge/version-v0.3.3-f8a5c2" alt="v0.3.3"/>
 </p>
 
 <p align="center">🪶 ✨ 🎨 🎬</p>
@@ -210,6 +210,10 @@ tests/                # pytest suite (grows with development)
 ```
 
 ## 📜 Changelog
+
+#### v0.3.3
+
+- Fix: an image posted by someone else could come back as the requester's own older image — two requests in a row returned the same picture; the latest image in the conversation is now what gets traced
 
 #### v0.3.2
 

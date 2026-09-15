@@ -97,9 +97,10 @@ class FeatherArtPlugin(Star):
         # 工作目录：系统临时目录下专属文件夹，只容纳本插件前缀的文件
         self.work_dir = Path(tempfile.gettempdir()) / "feather_art"
         self.work_dir.mkdir(parents=True, exist_ok=True)
-        # 会话级收件箱：按会话记最近一张图（实现见 inbox.py，那里能单测）。
-        # 不按发送者——群里 A 发图、B 说「帮我画」时，事件归属可能落在 B 身上，
-        # 按发送者取会静默回退成 B 自己的旧图（即「两次都画第一张」）。
+        # 会话级收件箱：按（会话, 发送者）记最近一张图（实现见 inbox.py，那里能单测）。
+        # 键里必须带发送者：只按会话记，后来者的图会盖掉先到者的——A 发图、C 发图、
+        # A 说「帮我画」，画出来的就是 C 的那张。带上发送者后，没自己发过图的人取不到，
+        # 直说「先发图」——画错比画不出更糟。
         self.inbox = SessionInbox()
         # 后台落盘任务：存引用防被 GC 回收
         self._cache_tasks: set[asyncio.Task] = set()
